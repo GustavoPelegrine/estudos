@@ -1,0 +1,45 @@
+rules_version = '2';
+
+// Regras do Cloud Firestore — Estudos Odonto
+//
+// Modelo de segurança:
+//  * Todos os dados privados ficam sob /users/{uid}/... e só o próprio usuário autenticado pode LER.
+//  * Nenhuma gravação é permitida a partir do navegador: todas passam pelo backend (Admin SDK),
+//    que valida os dados, aplica limites e mantém contadores consistentes.
+//  * Gabaritos (quizKeys) e contadores de uso não podem ser lidos pelo cliente.
+//  * Qualquer caminho não listado explicitamente é negado.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isOwner(uid) {
+      return request.auth != null
+        && request.auth.uid == uid
+        && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+
+      match /subjects/{id} { allow read: if isOwner(uid); allow write: if false; }
+      match /materials/{id} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+        match /pages/{page} { allow read: if isOwner(uid); allow write: if false; }
+      }
+      match /flashcards/{id} { allow read: if isOwner(uid); allow write: if false; }
+      match /flashcardReviews/{id} { allow read: if isOwner(uid); allow write: if false; }
+      match /quizzes/{id} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+        match /answers/{answerId} { allow read: if isOwner(uid); allow write: if false; }
+      }
+      match /conversations/{id} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+        match /messages/{messageId} { allow read: if isOwner(uid); allow write: if false; }
+      }
+      match /stats/{id} { allow read: if isOwner(uid); allow write: if false; }
+      // quizKeys e usage: sem regra de leitura → negados ao cliente.
+    }
+  }
+}

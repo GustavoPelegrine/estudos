@@ -1,0 +1,20 @@
+{
+  "indexes": [],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "pages",
+      "fieldPath": "text",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "quizzes",
+      "fieldPath": "questions",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "messages",
+      "fieldPath": "text",
+      "indexes": []
+    }
+  ]
+}

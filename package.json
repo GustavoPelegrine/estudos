@@ -1,0 +1,33 @@
+{
+  "name": "estudos-odonto",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Plataforma inteligente de estudos de Odontologia",
+  "type": "module",
+  "workspaces": [
+    "shared",
+    "server",
+    "web"
+  ],
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "dev:emulators": "node scripts/emulators.mjs start",
+    "dev:server": "npm run dev -w server",
+    "dev:web": "npm run dev -w web",
+    "typecheck": "npm run typecheck -w shared && npm run typecheck -w server && npm run typecheck -w web",
+    "build": "npm run build -w server && npm run build -w web",
+    "test:unit": "npm run test:unit -w server && npm run test -w web",
+    "test:emulator": "node scripts/emulators.mjs exec \"npm run test:integration -w server && npm run test:rules\"",
+    "test:rules": "vitest run --config tests/rules/vitest.config.ts",
+    "test": "npm run test:unit && npm run test:emulator",
+    "e2e": "node scripts/e2e.mjs"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "firebase": "^13.0.0",
+    "firebase-tools": "^15.34.0",
+    "vitest": "^5.0.5"
+  }
+}

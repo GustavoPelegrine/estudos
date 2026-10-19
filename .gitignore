@@ -1,0 +1,26 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.local
+# Credenciais e segredos
+serviceAccount*.json
+*-service-account*.json
+*credentials*.json
+.firebaserc
+# Emuladores e logs
+.emulator-data/
+firebase-debug.log*
+firestore-debug.log*
+storage-debug.log*
+ui-debug.log*
+pubsub-debug.log*
+*.log
+# PDFs privados (os de teste são gerados em tempo de execução)
+uploads/
+private/
+server/test/fixtures/generated/
+e2e-output/
+.DS_Store

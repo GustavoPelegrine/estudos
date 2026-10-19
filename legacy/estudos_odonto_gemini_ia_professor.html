@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1525">
+<title>Estudos Odonto — Plataforma de estudos</title>
+<style>
+:root{color-scheme:dark;--bg:#091321;--panel:#101e32;--panel2:#142640;--line:#263b58;--text:#edf5ff;--muted:#9db0c9;--blue:#54b8f5;--cyan:#66e0e0;--good:#58d6a3;--bad:#ff8797;--shadow:0 16px 44px #0003}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse at 80% 0%,#143354 0,transparent 35%),var(--bg);color:var(--text);font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer;transition:transform .15s,border-color .15s,background .15s}button:hover{transform:translateY(-1px)}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}button:disabled{opacity:.5;cursor:not-allowed;transform:none}.app{display:grid;grid-template-columns:245px minmax(0,1fr);min-height:100vh}.sidebar{border-right:1px solid var(--line);background:#0a1728eF;padding:24px 15px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:24px}.brand{display:flex;align-items:center;gap:11px;padding:0 8px}.brand-icon{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,#167bc1,#60e1df);display:grid;place-items:center;color:#051424;font-size:22px;font-weight:900;box-shadow:0 8px 25px #2aa5d044}.brand strong{display:block;font-size:16px;letter-spacing:.2px}.brand small{color:var(--muted)}.nav-label{font-size:10px;letter-spacing:1.5px;color:#738ba9;font-weight:800;padding:0 11px;margin-bottom:7px}.nav{display:grid;gap:5px}.nav button{display:flex;align-items:center;gap:12px;text-align:left;width:100%;border:1px solid transparent;background:transparent;color:var(--muted);padding:11px 12px;border-radius:11px}.nav button.active{background:#143553;border-color:#285478;color:#eaf8ff}.nav .ico{width:22px;text-align:center;font-size:17px}.side-bottom{margin-top:auto;padding:13px;border:1px solid var(--line);background:#101e32;border-radius:14px}.side-bottom p{font-size:12px;color:var(--muted);margin:6px 0 0}.main{min-width:0;padding:28px clamp(16px,3vw,42px) 60px;max-width:1500px;width:100%;margin:0 auto}.topbar{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:25px}.eyebrow{color:var(--cyan);text-transform:uppercase;letter-spacing:1.5px;font-size:10px;font-weight:800}.topbar h1{font-size:clamp(25px,3vw,34px);line-height:1.15;margin:5px 0 0;letter-spacing:-.8px}.top-actions{display:flex;gap:8px;flex-wrap:wrap}.btn{border:1px solid var(--line);background:#12243a;color:var(--text);padding:10px 14px;border-radius:10px;font-weight:650}.btn.primary{background:linear-gradient(135deg,#2385c6,#48b9db);border-color:transparent;color:#061625}.btn.ghost{background:transparent}.btn.danger{color:var(--bad)}.grid{display:grid;gap:15px}.stats{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:17px}.panel{background:linear-gradient(145deg,#122239f5,#0f1d30f5);border:1px solid var(--line);border-radius:17px;padding:19px;box-shadow:var(--shadow);min-width:0}.stat{display:flex;align-items:center;gap:13px}.stat-icon{width:42px;height:42px;display:grid;place-items:center;background:#183856;border:1px solid #285478;border-radius:13px;font-size:20px}.stat .num{font-size:25px;font-weight:800;letter-spacing:-.7px}.stat .label{font-size:12px;color:var(--muted)}.dash-grid{grid-template-columns:minmax(0,1.45fr) minmax(270px,.85fr)}.panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:15px}.panel h2{font-size:17px;margin:0;letter-spacing:-.25px}.panel h3{font-size:14px;margin:18px 0 8px}.muted{color:var(--muted)}.small{font-size:12px}.subject-list{display:grid;gap:10px}.subject{display:flex;align-items:center;gap:12px;border:1px solid var(--line);background:#0e1b2d;padding:13px;border-radius:12px}.subject .dot{width:9px;height:38px;border-radius:9px;background:var(--blue);flex-shrink:0}.subject .subject-info{min-width:0;flex:1}.subject strong{display:block;overflow-wrap:anywhere}.subject .subject-info small{color:var(--muted)}.progress{height:6px;border-radius:20px;background:#26374c;overflow:hidden;margin-top:8px}.progress span{display:block;height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan));width:0%;border-radius:20px}.quick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.quick button{border:1px solid var(--line);background:#0d1c2f;border-radius:13px;padding:15px 12px;text-align:left;color:var(--text)}.quick button b{display:block;font-size:14px;margin:7px 0 2px}.quick button span{font-size:12px;color:var(--muted)}.quick .qico{font-size:22px}.section-title{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;margin-bottom:17px}.section-title h2{font-size:23px;margin:0;letter-spacing:-.5px}.section-title p{margin:4px 0 0;color:var(--muted)}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.field{display:grid;gap:6px}.field.full{grid-column:1/-1}.field label{font-size:12px;font-weight:750;color:#c8d8ea}.field input,.field select,.field textarea,.chat-input{width:100%;border:1px solid var(--line);border-radius:10px;background:#091727;color:var(--text);padding:11px 12px;min-width:0}.field textarea{resize:vertical}.field input::placeholder,.field textarea::placeholder{color:#7188a4}.row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}.stack{display:grid;gap:13px}.notice{padding:12px 14px;border:1px solid #34546e;background:#102b43;border-radius:12px;color:#c8e9ff;font-size:13px}.notice.warn{border-color:#735a30;background:#2a2417;color:#ffe3a4}.notice.good{border-color:#245e4c;background:#102b25;color:#baf5dc}.tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:15px}.tabs button{border:1px solid var(--line);background:#0d1b2d;color:var(--muted);padding:9px 13px;border-radius:10px}.tabs button.active{background:#1a4668;border-color:#3479a6;color:#fff}.content-text h3{margin:19px 0 7px}.content-text p{color:#d5e1ef}.content-text li{margin:6px 0;color:#d5e1ef}.flashcard{min-height:190px;display:grid;place-items:center;text-align:center;padding:25px;border:1px solid #2d6287;border-radius:16px;background:radial-gradient(ellipse at top,#193d5a,#0d1b2d 75%);font-size:20px;font-weight:700;cursor:pointer;white-space:pre-wrap}.flashcard small{display:block;color:var(--cyan);font-size:11px;letter-spacing:1px;margin-bottom:12px}.choice{display:block;width:100%;text-align:left;padding:13px;margin:8px 0;background:#0c1a2b;border:1px solid var(--line);border-radius:10px;color:var(--text)}.choice.correct{border-color:var(--good);background:#103026}.choice.wrong{border-color:var(--bad);background:#351c29}.answer{border-left:3px solid var(--cyan);padding:10px 13px;background:#102239;border-radius:0 9px 9px 0;margin-top:12px}.chat-log{display:grid;gap:10px;max-height:480px;overflow:auto;padding:3px}.bubble{padding:12px 14px;border-radius:13px;white-space:pre-wrap;overflow-wrap:anywhere;max-width:88%}.bubble.user{justify-self:end;background:#1c5a83}.bubble.assistant{justify-self:start;background:#14263c;border:1px solid var(--line)}.chat-compose{display:flex;gap:8px;margin-top:13px}.chat-compose textarea{flex:1;min-height:46px;max-height:140px;resize:vertical}.empty{padding:30px 15px;text-align:center;border:1px dashed #344d68;border-radius:13px;color:var(--muted)}.empty strong{display:block;color:var(--text);margin-bottom:5px}.pill{display:inline-flex;align-items:center;padding:4px 8px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:11px}.footer-note{font-size:11px;color:#8196af;margin-top:17px}.hidden{display:none!important}.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#e5f6ff;color:#092033;padding:11px 16px;border-radius:12px;box-shadow:var(--shadow);z-index:10;font-weight:700;max-width:90vw}.mobile-nav{display:none}
+@media(max-width:950px){.app{grid-template-columns:205px minmax(0,1fr)}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.dash-grid{grid-template-columns:1fr}.main{padding:22px 18px 50px}}
+@media(max-width:650px){.app{display:block}.sidebar{display:none}.main{padding:18px 13px 85px}.topbar{align-items:flex-start}.topbar h1{font-size:26px}.top-actions .btn{padding:8px 10px;font-size:12px}.stats{gap:9px}.panel{padding:15px}.stat{gap:9px}.stat-icon{width:35px;height:35px}.stat .num{font-size:21px}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.mobile-nav{position:fixed;bottom:0;left:0;right:0;z-index:5;display:flex;justify-content:space-around;gap:3px;padding:8px 4px calc(8px + env(safe-area-inset-bottom));background:#091321f5;border-top:1px solid var(--line);backdrop-filter:blur(15px)}.mobile-nav button{flex:1;border:0;background:transparent;color:var(--muted);font-size:10px;padding:6px 1px;border-radius:8px}.mobile-nav button.active{color:var(--cyan);background:#163149}.mobile-nav span{display:block;font-size:18px;margin-bottom:2px}.quick{grid-template-columns:repeat(2,minmax(0,1fr))}.section-title{display:block}.section-title .row{margin-top:10px}.chat-compose{align-items:stretch}.chat-compose .btn{padding:8px}.bubble{max-width:96%}}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand"><div class="brand-icon">✦</div><div><strong>Estudos Odonto</strong><small>Seu espaço de aprendizagem</small></div></div>
+  <div><div class="nav-label">PLATAFORMA</div><nav class="nav" id="sideNav">
+    <button data-view="dashboard" class="active"><span class="ico">⌂</span> Visão geral</button>
+    <button data-view="materials"><span class="ico">▤</span> Meu material</button>
+    <button data-view="content"><span class="ico">▣</span> Conteúdo</button>
+    <button data-view="flashcards"><span class="ico">▧</span> Flashcards</button>
+    <button data-view="questions"><span class="ico">☷</span> Questões</button>
+    <button data-view="exam"><span class="ico">◷</span> Mini prova</button>
+    <button data-view="tutor"><span class="ico">✧</span> Tutor de estudos</button>
+  </nav></div>
+  <div class="side-bottom"><span class="pill">MODO LOCAL</span><p>Seu material fica neste navegador. Esta versão não envia arquivos para um servidor.</p></div>
+</aside>
+<main class="main">
+<header class="topbar"><div><div class="eyebrow" id="eyebrow">SEU AMBIENTE DE APRENDIZAGEM</div><h1 id="pageTitle">Vamos estudar?</h1></div><div class="top-actions"><button class="btn ghost" id="themeBtn" title="Alternar tema">☼ Tema</button><button class="btn" id="exportBtn">Exportar dados</button></div></header>
+<div id="notice" class="notice warn" style="margin-bottom:15px">Versão independente do Claude. Ferramentas locais funcionam sem API; conecte uma chave Gemini API na aba Tutor para habilitar geração por IA. Não coloque uma chave em um site público.</div>
+<section id="view-dashboard" class="view">
+  <div class="grid stats">
+    <div class="panel stat"><div class="stat-icon">▤</div><div><div class="num" id="statSubjects">0</div><div class="label">Matérias cadastradas</div></div></div>
+    <div class="panel stat"><div class="stat-icon">◉</div><div><div class="num" id="statMaterials">0</div><div class="label">Materiais adicionados</div></div></div>
+    <div class="panel stat"><div class="stat-icon">✓</div><div><div class="num" id="statAnswered">0</div><div class="label">Questões respondidas</div></div></div>
+    <div class="panel stat"><div class="stat-icon">↗</div><div><div class="num" id="statAccuracy">—</div><div class="label">Taxa de acerto</div></div></div>
+  </div>
+  <div class="grid dash-grid">
+    <div class="panel"><div class="panel-head"><div><h2>Suas matérias</h2><div class="muted small">Organize seus estudos por semestre</div></div><button class="btn" data-go="materials">Gerenciar</button></div><div id="subjectList" class="subject-list"></div></div>
+    <div class="panel"><div class="panel-head"><div><h2>Continuar estudando</h2><div class="muted small">Acesse rapidamente suas ferramentas</div></div></div><div class="quick">
+      <button data-go="content"><span class="qico">▣</span><b>Conteúdo</b><span>Consulte suas anotações</span></button>
+      <button data-go="flashcards"><span class="qico">▧</span><b>Flashcards</b><span>Revise conceitos</span></button>
+      <button data-go="questions"><span class="qico">☷</span><b>Questões</b><span>Pratique com o material</span></button>
+      <button data-go="tutor"><span class="qico">✧</span><b>Dúvidas</b><span>Busque no seu material</span></button>
+    </div><h3>Progresso geral</h3><div class="progress"><span id="overallProgress"></span></div><p class="muted small" id="progressText">Comece adicionando uma matéria e um resumo.</p></div>
+  </div>
+  <p class="footer-note">Dica: use “Exportar dados” para fazer uma cópia de segurança. Os dados são guardados neste navegador e não sincronizam automaticamente com outros dispositivos.</p>
+</section>
+<section id="view-materials" class="view hidden">
+  <div class="section-title"><div><h2>Meu material</h2><p>Cadastre as matérias e adicione resumos para estudar offline.</p></div></div>
+  <div class="panel stack">
+    <h2>Configuração acadêmica</h2>
+    <div class="form-grid">
+      <div class="field"><label for="semester">Semestre</label><select id="semester"></select></div>
+      <div class="field"><label for="subject">Matéria</label><input id="subject" placeholder="Ex.: Anatomia Humana"></div>
+      <div class="field full"><label for="topic">Tema (opcional)</label><input id="topic" placeholder="Ex.: ossos do crânio"></div>
+      <div class="field full"><label for="notes">Cole seu resumo ou anotações</label><textarea id="notes" rows="7" placeholder="Cole aqui o conteúdo das suas anotações. O texto ficará salvo neste navegador."></textarea></div>
+      <div class="field full"><label for="pdfFile">Ou selecione um PDF</label><input id="pdfFile" type="file" accept="application/pdf"><div id="pdfStatus" class="muted small">PDFs com texto podem ser lidos no navegador. PDFs digitalizados podem exigir OCR, que esta versão não inclui.</div></div>
+    </div>
+    <div class="row"><button class="btn primary" id="saveMaterial">Salvar matéria e material</button><button class="btn" id="clearForm">Limpar formulário</button></div>
+  </div>
+  <div class="panel" style="margin-top:15px"><div class="panel-head"><div><h2>Materiais salvos</h2><p class="muted small">Armazenados localmente neste navegador.</p></div><span class="pill" id="materialCount">0 materiais</span></div><div id="materialsList" class="stack"></div></div>
+</section>
+<section id="view-content" class="view hidden">
+  <div class="section-title"><div><h2>Conteúdo de estudo</h2><p>Consulte e organize o material que você adicionou.</p></div><div class="row"><select id="contentMaterial" aria-label="Selecionar material"></select><button class="btn" id="markStudied">Marcar como estudado ✓</button></div></div>
+  <div class="panel"><div id="contentBody" class="content-text"></div></div>
+</section>
+<section id="view-flashcards" class="view hidden">
+  <div class="section-title"><div><h2>Flashcards</h2><p>Cartões locais baseados no texto salvo — não são gerados por IA.</p></div><button class="btn primary" id="makeCards">Criar cartões do material</button></div>
+  <div class="panel"><div id="flashcardArea" class="stack"><div class="empty"><strong>Nenhum baralho criado</strong>Adicione um resumo e selecione “Criar cartões do material”.</div></div></div>
+</section>
+<section id="view-questions" class="view hidden">
+  <div class="section-title"><div><h2>Questões de revisão</h2><p>Exercícios simples derivados das definições encontradas no seu texto.</p></div><button class="btn primary" id="makeQuestions">Criar questões</button></div>
+  <div class="panel"><div id="questionArea"><div class="empty"><strong>Pratique a recuperação ativa</strong>Crie questões a partir de um material salvo para começar.</div></div></div>
+</section>
+<section id="view-exam" class="view hidden">
+  <div class="section-title"><div><h2>Mini prova</h2><p>Faça uma sessão de revisão com perguntas derivadas do material local.</p></div><div class="row"><label class="small muted" for="examCount">Questões</label><select id="examCount" style="width:auto"><option>5</option><option>10</option><option>15</option></select><button class="btn primary" id="startExam">Iniciar prova</button></div></div>
+  <div class="panel"><div id="examArea"><div class="empty"><strong>Prepare sua revisão</strong>Adicione um resumo com conceitos e definições para gerar perguntas locais.</div></div></div>
+</section>
+<section id="view-tutor" class="view hidden">
+  <div class="section-title"><div><h2>Tutor de estudos</h2><p>Busca trechos relevantes dentro do seu material salvo.</p></div><select id="tutorMaterial" aria-label="Material usado pelo tutor"></select></div>
+  <div class="panel stack" style="margin-bottom:13px">
+    <h2>Conectar IA do Gemini (opcional)</h2>
+    <p class="muted small">Use uma chave da Gemini API criada no Google AI Studio. A assinatura do aplicativo Gemini não é a mesma coisa que acesso à API. A chave fica apenas na memória desta aba e não é salva no navegador.</p>
+    <div class="field"><label for="geminiKey">Chave da Gemini API</label><input id="geminiKey" type="password" autocomplete="off" placeholder="Cole sua chave do Google AI Studio"></div>
+    <div class="row"><button class="btn primary" id="connectGemini">Usar IA nesta sessão</button><button class="btn" id="disconnectGemini">Desconectar</button><span id="geminiStatus" class="muted small">IA não conectada</span></div>
+    <p class="footer-note">A API pode ter limites gratuitos separados da assinatura Gemini e pode exigir configuração de faturamento. Não publique uma versão com sua chave embutida. Para um site público, o ideal é um backend que proteja a chave.</p>
+  </div>
+  <div class="notice warn" style="margin-bottom:13px">Sem uma chave Gemini API válida, o tutor usa apenas busca local por palavras-chave. Com a API conectada, a IA pode criar explicações, flashcards e questões com base no material fornecido.</div>
+  <div class="panel"><div id="chatLog" class="chat-log"><div class="empty"><strong>Faça uma pergunta sobre suas anotações</strong>Ex.: “O que meu resumo diz sobre esmalte dentário?”</div></div><div class="chat-compose"><textarea id="chatQuestion" class="chat-input" rows="2" placeholder="Digite sua dúvida sobre o material..."></textarea><button class="btn primary" id="askTutor">Buscar</button></div></div>
+</section>
+<footer class="footer-note">Estudos Odonto · Versão independente inicial · Seus dados permanecem neste navegador. Faça exportações periódicas de backup.</footer>
+</main>
+</div>
+<nav class="mobile-nav" id="mobileNav">
+<button data-view="dashboard" class="active"><span>⌂</span>Início</button><button data-view="materials"><span>▤</span>Material</button><button data-view="flashcards"><span>▧</span>Cartões</button><button data-view="questions"><span>☷</span>Questões</button><button data-view="tutor"><span>✧</span>Tutor</button>
+</nav>
+<div id="toast" class="toast hidden" role="status"></div>
+<script>
+(()=> {
+"use strict";
+const $=id=>document.getElementById(id);
+const STORE="estudosOdontoIndependentV1";
+const state={semester:2,materials:[],activeId:null,answered:0,correct:0,chat:[],theme:"dark",studied:[]};
+let pdfText="", flashcards=[], questions=[], quizState=null, toastTimer, geminiApiKey="";
+const GEMINI_MODEL="gemini-3.8-flash";
+async function callGemini(prompt, wantJson=false){
+  if(!geminiApiKey)throw new Error("Conecte a Gemini API na aba Tutor de estudos.");
+  const response=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(geminiApiKey)}`,{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{temperature:0.35,...(wantJson?{responseMimeType:"application/json"}:{})}})
+  });
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(data.error?.message||`Erro da Gemini API (${response.status}).`);
+  const text=(data.candidates?.[0]?.content?.parts||[]).map(p=>p.text||"").join("").trim();
+  if(!text)throw new Error("A IA não retornou conteúdo. Tente novamente.");
+  if(!wantJson)return text;
+  try{return JSON.parse(text)}catch(e){throw new Error("A IA retornou um formato inválido. Tente gerar novamente.")}
+}
+function materialContext(m,limit=26000){return (m?.text||"").slice(0,limit)}
+async function setBusy(button,busy,label){button.disabled=busy;if(busy){button.dataset.oldLabel=button.textContent;button.textContent=label||"Processando…"}else{button.textContent=button.dataset.oldLabel||button.textContent;delete button.dataset.oldLabel}}
+
+const views={dashboard:["Vamos estudar?","SEU AMBIENTE DE APRENDIZAGEM"],materials:["Meu material","ORGANIZAÇÃO ACADÊMICA"],content:["Conteúdo de estudo","LEITURA E REVISÃO"],flashcards:["Flashcards","MEMORIZAÇÃO ATIVA"],questions:["Questões de revisão","PRÁTICA DE RECUPERAÇÃO"],exam:["Mini prova","AVALIAÇÃO"],tutor:["Tutor de estudos","DÚVIDAS SOBRE SEU MATERIAL"]};
+function toast(s){const t=$("toast");t.textContent=s;t.classList.remove("hidden");clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.add("hidden"),2600)}
+function save(){try{localStorage.setItem(STORE,JSON.stringify(state));renderDashboard()}catch(e){toast("Não foi possível salvar. Talvez o armazenamento esteja cheio.")}}
+function load(){try{const x=JSON.parse(localStorage.getItem(STORE)||"null");if(x&&typeof x==="object")Object.assign(state,x)}catch(e){}}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function active(){return state.materials.find(m=>m.id===state.activeId)||state.materials[0]||null}
+function setActive(id){state.activeId=id;save();refreshSelectors()}
+function go(view){Object.keys(views).forEach(v=>$("view-"+v).classList.toggle("hidden",v!==view));document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===view));$("pageTitle").textContent=views[view][0];$("eyebrow").textContent=views[view][1];if(view==="dashboard")renderDashboard();if(view==="materials")renderMaterials();if(view==="content")renderContent();if(view==="tutor")renderChat();window.scrollTo({top:0,behavior:"smooth"})}
+document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.view)));
+document.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.go)));
+for(let i=1;i<=10;i++){const o=document.createElement("option");o.value=i;o.textContent=i+"º semestre";$("semester").append(o)}
+function refreshSelectors(){["contentMaterial","tutorMaterial"].forEach(id=>{const sel=$(id),old=sel.value;sel.replaceChildren();state.materials.forEach(m=>{const o=document.createElement("option");o.value=m.id;o.textContent=m.subject+" — "+m.semester+"º sem.";sel.append(o)});sel.value=state.materials.some(m=>m.id===old)?old:(state.activeId||state.materials[0]?.id||"")});}
+function renderDashboard(){const mats=state.materials;$("statSubjects").textContent=new Set(mats.map(m=>m.subject)).size;$("statMaterials").textContent=mats.length;$("statAnswered").textContent=state.answered;$("statAccuracy").textContent=state.answered?Math.round(state.correct/state.answered*100)+"%":"—";$("overallProgress").style.width=(state.answered?Math.round(state.correct/state.answered*100):0)+"%";$("progressText").textContent=state.answered?`${state.correct} acertos em ${state.answered} respostas registradas.`:"Adicione uma matéria e comece a revisar.";
+const list=$("subjectList");list.replaceChildren();if(!mats.length){list.innerHTML='<div class="empty"><strong>Nenhuma matéria cadastrada</strong>Adicione sua primeira matéria em “Meu material”.</div>';return}
+mats.slice(0,6).forEach(m=>{const d=document.createElement("div");d.className="subject";d.innerHTML=`<div class="dot"></div><div class="subject-info"><strong>${esc(m.subject)}</strong><small>${m.semester}º semestre · ${m.text.length.toLocaleString("pt-BR")} caracteres</small><div class="progress"><span style="width:${state.studied.includes(m.id)?100:0}%"></span></div></div><button class="btn" data-open="${m.id}">Abrir</button>`;list.append(d)});list.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{setActive(b.dataset.open);go("content")})}
+function renderMaterials(){refreshSelectors();const list=$("materialsList");list.replaceChildren();$("materialCount").textContent=state.materials.length+" material(is)";if(!state.materials.length){list.innerHTML='<div class="empty"><strong>Seu espaço está vazio</strong>Cadastre uma matéria e cole seu resumo ou envie um PDF.</div>';return}
+state.materials.forEach(m=>{const d=document.createElement("div");d.className="subject";d.innerHTML=`<div class="dot"></div><div class="subject-info"><strong>${esc(m.subject)}</strong><small>${m.semester}º semestre${m.topic?" · "+esc(m.topic):""} · ${m.text.length.toLocaleString("pt-BR")} caracteres</small><div class="muted small">${esc(m.text.slice(0,145))}${m.text.length>145?"…":""}</div></div><button class="btn" data-select="${m.id}">Selecionar</button><button class="btn danger" data-delete="${m.id}" aria-label="Excluir ${esc(m.subject)}">Excluir</button>`;list.append(d)});list.querySelectorAll("[data-select]").forEach(b=>b.onclick=()=>{setActive(b.dataset.select);$("subject").value=active()?.subject||"";toast("Material selecionado")});list.querySelectorAll("[data-delete]").forEach(b=>b.onclick=()=>{const m=state.materials.find(x=>x.id===b.dataset.delete);if(!m||!confirm(`Excluir o material “${m.subject}”?`))return;state.materials=state.materials.filter(x=>x.id!==m.id);state.studied=state.studied.filter(id=>id!==m.id);if(state.activeId===m.id)state.activeId=state.materials[0]?.id||null;save();renderMaterials();refreshSelectors();toast("Material excluído")})}
+function renderContent(){refreshSelectors();const m=state.materials.find(x=>x.id===$("contentMaterial").value)||active();const body=$("contentBody");body.replaceChildren();if(!m){body.innerHTML='<div class="empty"><strong>Não há material selecionado</strong>Adicione suas anotações em “Meu material”.</div>';return}
+const h=document.createElement("h2");h.textContent=m.subject+(m.topic?" — "+m.topic:"");body.append(h);const meta=document.createElement("p");meta.className="muted small";meta.textContent=m.semester+"º semestre · Material salvo localmente";body.append(meta);
+if(!m.text.trim()){body.innerHTML+='<div class="empty">Este material não tem texto extraído. Se foi um PDF digitalizado, será necessário OCR para reconhecer a escrita.</div>';return}
+const parts=m.text.split(/\n{2,}/).map(x=>x.trim()).filter(Boolean);const wrap=document.createElement("div");wrap.innerHTML=parts.map(p=>{const lines=p.split("\n").map(x=>x.trim()).filter(Boolean);if(lines.length&&lines[0].length<100&&(/^[A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9 \-:]{4,}$/.test(lines[0])||/^#{1,3}\s/.test(lines[0]))){return `<h3>${esc(lines[0].replace(/^#+\s*/,""))}</h3>${lines.slice(1).map(x=>`<p>${esc(x)}</p>`).join("")}`}return `<p>${esc(p).replace(/\n/g,"<br>")}</p>`}).join("");body.append(wrap);const note=document.createElement("p");note.className="footer-note";note.textContent="Conteúdo exibido a partir do texto salvo. Nenhum resumo gerado por IA foi acrescentado.";body.append(note)}
+$("contentMaterial").addEventListener("change",()=>{setActive($("contentMaterial").value);renderContent()});$("tutorMaterial").addEventListener("change",()=>{setActive($("tutorMaterial").value);renderChat()});
+$("saveMaterial").onclick=()=>{const subject=$("subject").value.trim(),text=$("notes").value.trim()||pdfText.trim();if(!subject){toast("Informe o nome da matéria.");$("subject").focus();return}if(!text){toast("Cole um resumo ou selecione um PDF com texto.");return}const id=crypto.randomUUID?crypto.randomUUID():String(Date.now());const m={id,semester:Number($("semester").value),subject,topic:$("topic").value.trim(),text,createdAt:new Date().toISOString()};state.materials.unshift(m);state.activeId=id;state.semester=m.semester;pdfText="";$("notes").value="";$("pdfFile").value="";$("pdfStatus").textContent="PDFs com texto podem ser lidos no navegador.";save();renderMaterials();refreshSelectors();toast("Material salvo neste navegador.");};
+$("clearForm").onclick=()=>{$("subject").value="";$("topic").value="";$("notes").value="";$("pdfFile").value="";pdfText="";$("pdfStatus").textContent="PDFs com texto podem ser lidos no navegador."};
+$("pdfFile").addEventListener("change",async e=>{const f=e.target.files?.[0];pdfText="";if(!f)return;if(f.type!=="application/pdf"){toast("Selecione um arquivo PDF.");return}if(f.size>25*1024*1024){toast("O PDF ultrapassa 25 MB.");e.target.value="";return}const st=$("pdfStatus");st.textContent="Lendo o PDF no navegador…";try{if(!window.pdfjsLib)throw Error("Biblioteca PDF.js indisponível");pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";const doc=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;let out="",pages=0;for(let p=1;p<=doc.numPages;p++){const page=await doc.getPage(p),content=await page.getTextContent(),text=joinPdfTextItems(content.items);if(text.trim())out+=`\n\n[Página ${p}]\n${text}`;pages++;if(out.length>150000)break}if(out.trim().length<40){st.textContent="Não encontrei texto suficiente. Este PDF pode ser digitalizado; OCR não está incluído nesta versão.";return}pdfText=out.slice(0,150000);$("notes").value=pdfText;st.textContent=`Texto extraído de ${pages} página(s). ${out.length>150000?"O texto foi limitado a 150 mil caracteres.":""} Revise e salve o material.`;if(!$("subject").value.trim())$("subject").value=f.name.replace(/\.pdf$/i,"");toast("PDF lido no navegador; ainda não foi salvo.")}catch(err){console.error(err);st.textContent="Não foi possível ler o PDF. Verifique sua conexão com a biblioteca PDF.js e tente novamente."}});
+$("markStudied").onclick=()=>{const m=state.materials.find(x=>x.id===$("contentMaterial").value)||active();if(!m){toast("Adicione um material primeiro.");return}if(!state.studied.includes(m.id))state.studied.push(m.id);save();renderDashboard();toast("Material marcado como estudado.")};
+function joinPdfTextItems(items){
+  // Usa as posições dos fragmentos do PDF para evitar inserir espaços arbitrários entre partes de uma palavra.
+  let lines=[],line=[],lastY=null,lastEnd=null;
+  for(const item of items){
+    if(!item.str)continue;
+    const x=Number(item.transform?.[4]||0), y=Number(item.transform?.[5]||0);
+    const height=Math.abs(Number(item.transform?.[3]||0))||10;
+    const width=Number(item.width||0);
+    if(lastY!==null && Math.abs(y-lastY)>Math.max(2,height*.45)){if(line.length)lines.push(line);line=[];lastEnd=null}
+    let gap=lastEnd===null?0:x-lastEnd;
+    line.push({text:item.str,x,gap});
+    lastY=y;lastEnd=x+width;
+  }
+  if(line.length)lines.push(line);
+  let result=lines.map(parts=>parts.map((part,i)=>{
+    if(i===0)return part.text;
+    // Espaço somente quando há separação visual entre os fragmentos.
+    return (part.gap>2.5?" ":"")+part.text;
+  }).join("")).join("\n");
+  // Corrige casos comuns em que a extração fragmenta palavras letra a letra.
+  // Atua apenas em sequências curtas de letras isoladas, preservando separação entre palavras.
+  result=result.replace(/\b(?:[A-Za-zÀ-ÿ]\s){2,}[A-Za-zÀ-ÿ]\b/g,run=>run.replace(/\s+/g,""));
+  result=result.replace(/[ \t]+/g," ").replace(/ *\n */g,"\n").trim();
+  result=result.replace(/\b([A-Za-zÀ-ÿ])\s+([A-Za-zÀ-ÿ])\s+([A-Za-zÀ-ÿ])\s+([A-Za-zÀ-ÿ])\b/g,"$1$2$3$4");
+  result=result.replace(/\b([A-Za-zÀ-ÿ])\s+([A-Za-zÀ-ÿ])\s+([A-Za-zÀ-ÿ])\b/g,"$1$2$3");
+  return result;
+}
+function sentenceChunks(text){return text.replace(/\r/g,"").split(/(?<=[.!?])\s+|\n+/).map(s=>s.trim()).filter(s=>s.length>=35&&s.length<=550)}
+function termsFrom(text){const stop=new Set("sobre entre como para pela pelo pelos pelas uma umas uns dos das que com sem seu sua seus suas este esta esses essas isso aquilo quando onde qual quais porque então também muito mais menos pode podem deve devem será foram eram pela pelos delas deles após antes durante desde contra cada outro outra outros outras todo toda todos todas parte partes forma tipo tipos ainda mesmo mesma".split(" "));const counts=new Map();(text.toLowerCase().match(/[a-záéíóúâêôãõç][a-záéíóúâêôãõç-]{4,}/g)||[]).forEach(w=>{if(!stop.has(w))counts.set(w,(counts.get(w)||0)+1)});return [...counts].sort((a,b)=>b[1]-a[1]).map(x=>x[0]).slice(0,30)}
+function selectedMaterial(){return state.materials.find(m=>m.id===($("contentMaterial").value||$("tutorMaterial").value))||active()}
+$("makeCards").onclick=async()=>{
+  const m=selectedMaterial();if(!m||!m.text.trim()){toast("Adicione e selecione um resumo primeiro.");return}
+  const btn=$("makeCards");await setBusy(btn,true,"Analisando material…");
+  try{
+    if(geminiApiKey){
+      const data=await callGemini(`Você é professor universitário experiente de Odontologia e especialista em avaliação formativa. Crie 12 flashcards de alta qualidade, em português brasileiro, com base EXCLUSIVAMENTE no material abaixo. Não escreva "com base no resumo" nem mencione o arquivo. Faça perguntas conceituais, de compreensão, relações causa-efeito, distinções e aplicação acadêmica quando o texto permitir. Não invente fatos não sustentados pelo material. Se o texto estiver incompleto/corrompido, crie cartões apenas sobre trechos compreensíveis. Respostas objetivas, mas suficientes para estudar. Retorne apenas JSON: {"cards":[{"front":"pergunta","back":"resposta"}]}. Matéria: ${m.subject}. Tema: ${m.topic||"geral"}. MATERIAL:\n${materialContext(m,26000)}`,true);
+      if(!Array.isArray(data.cards)||!data.cards.length||data.cards.some(c=>!c.front||!c.back))throw new Error("A IA não retornou flashcards válidos.");
+      flashcards=data.cards.slice(0,20).map(c=>({front:String(c.front),back:String(c.back)}));
+    }else{
+      const chunks=sentenceChunks(m.text);const terms=termsFrom(m.text);flashcards=[];
+      terms.slice(0,12).forEach(term=>{const sent=chunks.find(s=>s.toLowerCase().includes(term));if(sent)flashcards.push({front:`Explique o conceito de “${term}” e sua importância em Odontologia.`,back:sent})});
+      if(!flashcards.length)chunks.slice(0,10).forEach(s=>flashcards.push({front:"Qual conceito fundamental está expresso neste trecho?",back:s}));
+      if(!flashcards.length)throw new Error("Não encontrei trechos adequados. Confira a leitura do PDF.");
+      toast("Flashcards locais criados. Conecte o Gemini para perguntas elaboradas por IA.");
+    }
+    renderCards(0,false,[]);go("flashcards");
+  }catch(e){toast(e.message||"Não foi possível gerar flashcards.");}
+  finally{await setBusy(btn,false)}
+};
+function renderCards(index,flipped,missed){
+  const area=$("flashcardArea");area.replaceChildren();
+  if(index>=flashcards.length){
+    const h=document.createElement("h2");h.textContent="Baralho concluído";area.append(h);
+    const summary=document.createElement("p");summary.className="muted";
+    summary.textContent=`${flashcards.length-missed.length} cartão(ões) marcados como conhecidos · ${missed.length} para revisar.`;area.append(summary);
+    if(missed.length){
+      const sub=document.createElement("h3");sub.textContent="Cartões que você marcou para revisar";area.append(sub);
+      missed.forEach((c,i)=>{const item=document.createElement("div");item.className="subject";item.innerHTML=`<div class="dot"></div><div class="subject-info"><strong>${i+1}. ${esc(c.front)}</strong><small>${esc(c.back)}</small></div>`;area.append(item)});
+      const b=document.createElement("button");b.className="btn primary";b.textContent="Revisar estes cartões agora";b.onclick=()=>{flashcards=missed.slice();renderCards(0,false,[])};area.append(b);
+    }else{const p=document.createElement("p");p.textContent="Você não marcou nenhum cartão para revisar nesta sessão.";area.append(p)}
+    const restart=document.createElement("button");restart.className="btn";restart.style.marginLeft="8px";restart.textContent="Recomeçar baralho";restart.onclick=()=>renderCards(0,false,[]);area.append(restart);return;
+  }
+  const c=flashcards[index];const info=document.createElement("div");info.className="muted small";info.textContent=`Cartão ${index+1} de ${flashcards.length}`;
+  const card=document.createElement("button");card.className="flashcard";card.innerHTML=`<div><small>${flipped?"RESPOSTA":"PERGUNTA DE REVISÃO · CLIQUE PARA VIRAR"}</small>${esc(flipped?c.back:c.front)}</div>`;card.onclick=()=>renderCards(index,!flipped,missed);area.append(info,card);
+  if(flipped){const row=document.createElement("div");row.className="row";const know=document.createElement("button");know.className="btn primary";know.textContent="Sei";know.onclick=()=>renderCards(index+1,false,missed);const retry=document.createElement("button");retry.className="btn";retry.textContent="Revisar";retry.onclick=()=>renderCards(index+1,false,[...missed,c]);row.append(know,retry);area.append(row)}
+}
+function shuffleOptions(options, correctText){
+  const unique=[...new Set(options.filter(Boolean))];
+  for(let i=unique.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[unique[i],unique[j]]=[unique[j],unique[i]]}
+  let correct=unique.indexOf(correctText);
+  if(correct<0){unique.push(correctText);correct=unique.length-1}
+  return {options:unique.slice(0,4),correct};
+}
+function buildQuestionsLocal(m){
+  const chunks=sentenceChunks(m.text).filter(s=>s.length>=45);const terms=termsFrom(m.text);const qs=[];const used=new Set();
+  terms.forEach(term=>{const s=chunks.find(x=>x.toLowerCase().includes(term)&&!used.has(x));if(!s)return;used.add(s);const correctText=s.trim();const distractors=chunks.filter(x=>x!==s&&x.length>=35).sort(()=>Math.random()-.5).slice(0,3).map(x=>x.trim());const shuffled=shuffleOptions([...distractors,correctText],correctText);qs.push({q:`Qual alternativa apresenta uma afirmação presente no material sobre “${term}”?`,options:shuffled.options,correct:shuffled.options.indexOf(correctText),explanation:`A alternativa correta reproduz uma afirmação do material: “${correctText}”. Revise o contexto completo para compreender o conceito.`,topic:term})});
+  return qs;
+}
+async function buildQuestions(m,count=10){
+  if(!geminiApiKey)return buildQuestionsLocal(m).slice(0,count);
+  const data=await callGemini(`Você é professor universitário de Odontologia e elaborador de provas. Crie ${count} questões de múltipla escolha de qualidade universitária em português brasileiro, usando EXCLUSIVAMENTE os fatos sustentados pelo material abaixo. Faça enunciados naturais, específicos e variados; teste compreensão, relações entre conceitos e aplicação quando possível. Cada questão deve ter 4 alternativas plausíveis (A-D), exatamente uma correta, sem pistas óbvias e sem repetir a mesma pergunta. Não use "qual afirmação está presente no material" como molde repetitivo. Não invente fatos para completar lacunas. Ignore partes ilegíveis. Retorne somente JSON: {"questions":[{"q":"enunciado","options":["A","B","C","D"],"correctIndex":0,"explanation":"justificativa da correta e, quando possível, por que as demais estão erradas","topic":"conceito específico"}]}. correctIndex deve ser número de 0 a 3 da alternativa correta. Matéria: ${m.subject}; tema: ${m.topic||"geral"}. MATERIAL:\n${materialContext(m,30000)}`,true);
+  if(!Array.isArray(data.questions)||!data.questions.length)throw new Error("A IA não retornou questões válidas.");
+  return data.questions.slice(0,count).map(q=>{
+    if(!q.q||!Array.isArray(q.options)||q.options.length!==4||!Number.isInteger(q.correctIndex)||q.correctIndex<0||q.correctIndex>3)throw new Error("Uma questão veio incompleta. Gere novamente.");
+    return {q:String(q.q),options:q.options.map(String),correct:q.correctIndex,explanation:String(q.explanation||"Revise o conceito no material."),topic:String(q.topic||"Revisão do conteúdo")};
+  });
+}
+function renderQuestionSet(target,qs,index=0,exam=false,answers=[]){const area=$(target);area.replaceChildren();if(!qs.length){area.innerHTML='<div class="empty"><strong>Não foi possível criar questões</strong>O material precisa conter frases explicativas mais completas.</div>';return}if(index>=qs.length){const score=qs.filter((q,i)=>answers[i]===q.correct).length;const h=document.createElement("h2");h.textContent=`Resultado: ${score} de ${qs.length}`;const p=document.createElement("p");p.className="muted";p.textContent="Estas perguntas foram montadas a partir de trechos do material e não foram geradas nem verificadas por IA.";area.append(h,p);if(exam){const missed=qs.map((q,i)=>({q,i})).filter(x=>answers[x.i]!==x.q.correct);const review=document.createElement("div");review.className="answer";const title=document.createElement("h3");title.textContent=missed.length?"Principais pontos para revisar":"Ótimo trabalho — você acertou todas!";review.append(title);if(missed.length){const intro=document.createElement("p");intro.textContent="Revise estes temas e releia as explicações das questões que você errou:";review.append(intro);const ul=document.createElement("ul");missed.forEach(({q})=>{const li=document.createElement("li");li.textContent=q.q+" — "+q.explanation;ul.append(li)});review.append(ul)}else{const done=document.createElement("p");done.textContent="Tente uma nova sessão com outro material para consolidar o aprendizado.";review.append(done)}area.append(review)}const again=document.createElement("button");again.className="btn primary";again.style.marginTop="12px";again.textContent="Refazer sessão";again.onclick=()=>renderQuestionSet(target,qs,0,exam,[]);area.append(again);return}const q=qs[index];const title=document.createElement("div");title.className="muted small";title.textContent=`Questão ${index+1} de ${qs.length}`;const question=document.createElement("h3");question.textContent=q.q;area.append(title,question);const choices=document.createElement("div");q.options.forEach((text,i)=>{const b=document.createElement("button");b.className="choice";b.textContent=String.fromCharCode(65+i)+") "+text;b.onclick=()=>{if(b.disabled)return;answers[index]=i;state.answered++;if(i===q.correct)state.correct++;save();[...choices.children].forEach((el,j)=>{el.disabled=true;if(j===q.correct)el.classList.add("correct");else if(j===i)el.classList.add("wrong")});const exp=document.createElement("div");exp.className="answer";exp.textContent=q.explanation;const next=document.createElement("button");next.className="btn primary";next.style.marginTop="12px";next.textContent=index===qs.length-1?"Ver resultado":"Próxima";next.onclick=()=>renderQuestionSet(target,qs,index+1,exam,answers);area.append(exp,next)};choices.append(b)});area.append(choices)}
+$("makeQuestions").onclick=async()=>{const m=selectedMaterial();if(!m){toast("Adicione e selecione um material primeiro.");return}const btn=$("makeQuestions");await setBusy(btn,true,"Elaborando questões…");try{questions=await buildQuestions(m,10);renderQuestionSet("questionArea",questions);go("questions");if(!geminiApiKey)toast("Questões locais criadas. Conecte o Gemini para questões de nível professor.")}catch(e){toast(e.message||"Falha ao gerar questões.")}finally{await setBusy(btn,false)}};
+$("startExam").onclick=async()=>{const m=selectedMaterial();if(!m){toast("Adicione e selecione um material primeiro.");return}const btn=$("startExam");await setBusy(btn,true,"Preparando prova…");try{const qs=await buildQuestions(m,Number($("examCount").value));renderQuestionSet("examArea",qs,0,true,[]);go("exam");if(!geminiApiKey)toast("Mini prova local criada. Conecte o Gemini para uma prova elaborada por IA.")}catch(e){toast(e.message||"Falha ao preparar a mini prova.")}finally{await setBusy(btn,false)}};
+function renderChat(){refreshSelectors();const log=$("chatLog");log.replaceChildren();if(!state.chat.length){log.innerHTML='<div class="empty"><strong>Faça uma pergunta sobre suas anotações</strong>O tutor procura palavras e trechos no material selecionado.</div>';return}state.chat.forEach(m=>{const d=document.createElement("div");d.className="bubble "+(m.role==="user"?"user":"assistant");d.textContent=m.text;log.append(d)});log.scrollTop=log.scrollHeight}
+function answerFromMaterial(question,m){
+  if(!m||!m.text)return "Não há material selecionado com texto. Adicione um resumo primeiro.";
+  const stop=new Set(["sobre","qual","quais","como","porque","explique","fale","diga","resumo","material","meu","minha","para","isso","essa","esse","oque"]);
+  const words=(question.toLowerCase().match(/[a-záéíóúâêôãõç]{3,}/g)||[]).filter(w=>!stop.has(w));
+  const normalized=m.text.replace(/\r/g,"").replace(/[ \t]*\n[ \t]*/g," ").replace(/[ \t]{2,}/g," ").replace(/(?:\[Página \d+\]\s*)/g,"\n");
+  const sentences=normalized.split(/(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9])|(?=\n)/).map(s=>s.replace(/\s+/g," ").trim()).filter(s=>s.length>=45&&s.length<=900);
+  const scored=sentences.map(s=>({s,score:words.reduce((n,w)=>n+(s.toLocaleLowerCase("pt-BR").includes(w)?1:0),0)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score);
+  const unique=[];for(const item of scored){if(!unique.some(x=>x.s===item.s))unique.push(item);if(unique.length===3)break}
+  if(!unique.length)return "Não encontrei um trecho claramente relacionado à sua pergunta no material selecionado. Esta versão não usa uma LLM nem pesquisa na internet, então não vou inventar uma resposta. Tente perguntar usando termos que apareçam nas anotações.";
+  return `Trechos relevantes do material “${m.subject}”:\n\n${unique.map(x=>"• "+x.s).join("\n\n")}\n\nLimitação: estou localizando e organizando trechos do arquivo, não produzindo uma explicação com inteligência artificial.`;
+}
+$("askTutor").onclick=async()=>{const q=$("chatQuestion").value.trim();if(!q)return;const m=state.materials.find(x=>x.id===$("tutorMaterial").value)||active();state.chat.push({role:"user",text:q});$("chatQuestion").value="";renderChat();const btn=$("askTutor");await setBusy(btn,true,"Pensando…");try{let answer;if(geminiApiKey){answer=await callGemini(`Você é um tutor universitário de Odontologia. Responda em português brasileiro usando primeiro e principalmente o material fornecido. Explique como um bom professor: definição clara, raciocínio em etapas e exemplos apenas se sustentados pelo material. Não invente conteúdo nem referências. Se o material não responder, diga isso explicitamente; não afirme ter pesquisado na internet. Pergunta: ${q}\nMatéria: ${m?.subject||"não informada"}\nMaterial:\n${materialContext(m,24000)}`)}else{answer=answerFromMaterial(q,m)}state.chat.push({role:"assistant",text:answer});save();renderChat()}catch(e){state.chat.push({role:"assistant",text:"Não consegui consultar a IA: "+(e.message||"erro desconhecido")});renderChat()}finally{await setBusy(btn,false)}};
+$("connectGemini").onclick=()=>{const key=$("geminiKey").value.trim();if(!key){toast("Cole uma chave da Gemini API.");return}geminiApiKey=key;$("geminiStatus").textContent="Chave definida nesta sessão; teste fazendo uma pergunta.";$("geminiStatus").style.color="var(--good)";toast("Gemini configurado nesta aba. A chave não foi salva.")};
+$("disconnectGemini").onclick=()=>{geminiApiKey="";$("geminiKey").value="";$("geminiStatus").textContent="IA não conectada";$("geminiStatus").style.color="";toast("Gemini desconectado.")};
+$("chatQuestion").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();$("askTutor").click()}});
+$("themeBtn").onclick=()=>{state.theme=state.theme==="dark"?"light":"dark";document.documentElement.dataset.theme=state.theme;document.documentElement.style.colorScheme=state.theme;save();$("themeBtn").textContent=state.theme==="dark"?"☼ Tema":"☾ Tema"};
+$("exportBtn").onclick=()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="backup-estudos-odonto.json";a.click();URL.revokeObjectURL(a.href);toast("Backup exportado.")};
+const importBtn=document.createElement("button");importBtn.className="btn";importBtn.textContent="Importar backup";importBtn.onclick=()=>{const input=document.createElement("input");input.type="file";input.accept="application/json";input.onchange=async()=>{try{const data=JSON.parse(await input.files[0].text());if(!Array.isArray(data.materials))throw Error();if(!confirm("Importar backup e substituir os dados atuais deste navegador?"))return;Object.keys(state).forEach(k=>delete state[k]);Object.assign(state,data);save();renderMaterials();refreshSelectors();renderDashboard();toast("Backup importado.")}catch(e){toast("Arquivo de backup inválido.")}};input.click()};$("exportBtn").after(importBtn);
+$("semester").value=state.semester||2;
+load();$("semester").value=state.semester||2;document.documentElement.dataset.theme=state.theme||"dark";document.documentElement.style.colorScheme=state.theme||"dark";$("themeBtn").textContent=state.theme==="light"?"☾ Tema":"☼ Tema";refreshSelectors();renderDashboard();renderMaterials();
+})();
+</script>
+</body></html>
