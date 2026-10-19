@@ -84,14 +84,14 @@ try {
     await page.getByText("Histologia Bucal · 2º").waitFor();
   });
 
-  await step("envia PDF com texto, confere e aprova", async () => {
+  await step("lê o PDF no navegador, salva só o texto, confere e aprova", async () => {
     await page.getByLabel("Tema (opcional)").fill("Tecidos dentários");
     await page.getByLabel("Arquivo PDF").setInputFiles(join(FIXTURES, "texto-simples.pdf"));
-    await page.getByRole("button", { name: "Enviar e extrair texto" }).click();
+    await page.getByRole("button", { name: "Extrair e salvar texto" }).click();
     await page.waitForURL("**/materiais/*", { timeout: 30000 });
     await page.getByText("Qualidade da extração").waitFor();
     await page.getByRole("heading", { name: "ESMALTE DENTÁRIO" }).waitFor();
-    await page.getByRole("button", { name: "Carregar PDF" }).click();
+    // O PDF original não é enviado: a tela de conferência o abre a partir da memória da aba.
     await page.locator("iframe.pdf-frame").waitFor();
     await page.waitForTimeout(800);
     await shot(page, "03-conferir-texto");
@@ -102,7 +102,7 @@ try {
   await step("envia PDF em duas colunas e aprova", async () => {
     await page.getByRole("link", { name: "← Meu material" }).click();
     await page.getByLabel("Arquivo PDF").setInputFiles(join(FIXTURES, "duas-colunas.pdf"));
-    await page.getByRole("button", { name: "Enviar e extrair texto" }).click();
+    await page.getByRole("button", { name: "Extrair e salvar texto" }).click();
     await page.waitForURL("**/materiais/*", { timeout: 30000 });
     await page.getByText(/Layout em colunas detectado/).waitFor();
     await page.getByRole("button", { name: /Texto conferido/ }).click();
@@ -112,7 +112,7 @@ try {
   await step("identifica PDF digitalizado (exige OCR)", async () => {
     await page.getByRole("link", { name: "← Meu material" }).click();
     await page.getByLabel("Arquivo PDF").setInputFiles(join(FIXTURES, "digitalizado.pdf"));
-    await page.getByRole("button", { name: "Enviar e extrair texto" }).click();
+    await page.getByRole("button", { name: "Extrair e salvar texto" }).click();
     await page.waitForURL("**/materiais/*", { timeout: 30000 });
     await page.getByText("Este documento exige OCR.").waitFor();
     await shot(page, "04-pdf-digitalizado");

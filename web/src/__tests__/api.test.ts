@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const currentUser: { getIdToken: () => Promise<string> } | null = { getIdToken: async () => "token-123" };
 const authMock: { currentUser: typeof currentUser | null } = { currentUser };
-vi.mock("../lib/firebase", () => ({ auth: authMock, storage: {}, usingEmulators: false }));
+vi.mock("../lib/firebase", () => ({ auth: authMock, usingEmulators: false }));
 
 const { api, ApiError, request } = await import("../lib/api");
 
@@ -22,9 +22,9 @@ describe("cliente da API", () => {
 
   it("nunca envia chave de IA nem identificador de dono escolhido pelo cliente", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({}), { status: 200 }));
-    await api.createMaterial({ subjectId: "s1", fileName: "a.pdf", sizeBytes: 10 });
+    await api.createPdfMaterial({ subjectId: "s1", fileName: "a.pdf", sizeBytes: 10, pageCount: 1, warnings: [] });
     const body = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string);
-    expect(body).toEqual({ subjectId: "s1", fileName: "a.pdf", sizeBytes: 10 });
+    expect(body).toEqual({ subjectId: "s1", fileName: "a.pdf", sizeBytes: 10, pageCount: 1, warnings: [] });
     expect(JSON.stringify(fetchMock.mock.calls)).not.toMatch(/apiKey|GEMINI|ownerUid/i);
   });
 

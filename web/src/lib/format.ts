@@ -1,8 +1,7 @@
 import type { MaterialStatus } from "@estudos/shared";
 
 export const STATUS_LABEL: Record<MaterialStatus, { text: string; tone: "good" | "warn" | "bad" | "info" }> = {
-  awaiting_upload: { text: "Aguardando envio", tone: "warn" },
-  processing: { text: "Processando…", tone: "info" },
+  processing: { text: "Recebendo texto…", tone: "info" },
   needs_review: { text: "Conferir texto", tone: "warn" },
   needs_ocr: { text: "Exige OCR", tone: "bad" },
   ready: { text: "Pronto", tone: "good" },

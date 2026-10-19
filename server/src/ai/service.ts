@@ -61,16 +61,28 @@ export class AiService {
   private async run<T>(uid: string, req: AiRequest, validate: (raw: unknown) => T): Promise<T & { model: string }> {
     if (!this.provider) throw new AppError(503, "ai_unavailable", "A IA não está configurada neste servidor.");
     const reservation = await reserveAiCall(this.db, this.config, uid);
+    // Orçamento total de tempo (todas as tentativas) para caber no limite da função serverless.
+    const budget = new AbortController();
+    const budgetTimer = setTimeout(() => budget.abort(), this.config.AI_TIME_BUDGET_MS);
+    try {
+      return await this.attempts(req, validate, reservation, budget.signal, uid);
+    } finally {
+      clearTimeout(budgetTimer);
+    }
+  }
+
+  private async attempts<T>(req: AiRequest, validate: (raw: unknown) => T, reservation: { refund: () => Promise<void> }, signal: AbortSignal, uid: string): Promise<T & { model: string }> {
+    const provider = this.provider as AiProvider;
     // Uma nova tentativa apenas para respostas fora do formato (os erros de rede já têm retry no cliente).
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const res = await this.provider.generate(req);
+        const res = await provider.generate(req, signal);
         await recordTokens(this.db, uid, res.usage.promptTokens, res.usage.outputTokens).catch(() => undefined);
         const out = validate(parseJson(res.text));
         return { ...out, model: res.model };
       } catch (err) {
         const aiErr = err instanceof AiError ? err : null;
-        if (aiErr?.kind === "invalid_response" && attempt === 0) {
+        if (aiErr?.kind === "invalid_response" && attempt === 0 && !signal.aborted) {
           log.warn("ai_invalid_response_retry", { task: req.task });
           continue;
         }

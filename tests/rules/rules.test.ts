@@ -5,25 +5,21 @@
 import { readFileSync } from "node:fs";
 import { assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment } from "@firebase/rules-unit-testing";
 import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs } from "firebase/firestore";
-import { ref, uploadBytes, getBytes, deleteObject } from "firebase/storage";
 import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
 
 const PROJECT = "demo-estudos-odonto";
-const PDF = new TextEncoder().encode("%PDF-1.7\n%teste\n");
 let env: RulesTestEnvironment;
 
 beforeAll(async () => {
   env = await initializeTestEnvironment({
     projectId: PROJECT,
     firestore: { rules: readFileSync("firestore.rules", "utf8"), host: "127.0.0.1", port: 8085 },
-    storage: { rules: readFileSync("storage.rules", "utf8"), host: "127.0.0.1", port: 9199 },
   });
 });
 afterAll(async () => env?.cleanup());
 
 beforeEach(async () => {
   await env.clearFirestore();
-  await env.clearStorage();
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
     await setDoc(doc(db, "users/alice"), { email: "alice@example.com" });
@@ -34,7 +30,6 @@ beforeEach(async () => {
     await setDoc(doc(db, "users/alice/quizKeys/q1"), { answers: {} });
     await setDoc(doc(db, "users/alice/usage/2026-10-19"), { aiCalls: 3 });
     await setDoc(doc(db, "users/alice/conversations/c1/messages/x"), { text: "oi" });
-    await uploadBytes(ref(ctx.storage(), "users/alice/materials/m2/original.pdf"), PDF, { contentType: "application/pdf" });
   });
 });
 
@@ -87,42 +82,5 @@ describe("Firestore: isolamento entre usuários", () => {
   it("coleções fora de /users são negadas", async () => {
     await assertFails(getDoc(doc(alice().firestore(), "usageGlobal/2026-10-19")));
     await assertFails(setDoc(doc(alice().firestore(), "qualquer/coisa"), { a: 1 }));
-  });
-});
-
-describe("Storage: PDFs privados", () => {
-  const pdfMeta = { contentType: "application/pdf" };
-
-  it("a dona envia o PDF para um slot reservado", async () => {
-    await assertSucceeds(uploadBytes(ref(alice().storage(), "users/alice/materials/m1/original.pdf"), PDF, pdfMeta));
-  });
-
-  it("a dona lê o próprio PDF; outro usuário e visitantes não", async () => {
-    const path = "users/alice/materials/m2/original.pdf";
-    await assertSucceeds(getBytes(ref(alice().storage(), path)));
-    await assertFails(getBytes(ref(bob().storage(), path)));
-    await assertFails(getBytes(ref(anon().storage(), path)));
-  });
-
-  it("outro usuário não envia arquivos para a pasta alheia", async () => {
-    await assertFails(uploadBytes(ref(bob().storage(), "users/alice/materials/m1/original.pdf"), PDF, pdfMeta));
-  });
-
-  it("rejeita upload sem slot, com slot já usado, fora do nome padrão ou de outro tipo", async () => {
-    const st = alice().storage();
-    await assertFails(uploadBytes(ref(st, "users/alice/materials/inexistente/original.pdf"), PDF, pdfMeta));
-    await assertFails(uploadBytes(ref(st, "users/alice/materials/m2/original.pdf"), PDF, pdfMeta)); // status ready / sobrescrita
-    await assertFails(uploadBytes(ref(st, "users/alice/materials/m1/outro.pdf"), PDF, pdfMeta));
-    await assertFails(uploadBytes(ref(st, "users/alice/materials/m1/original.pdf"), PDF, { contentType: "text/html" }));
-    await assertFails(uploadBytes(ref(st, "users/alice/qualquer.pdf"), PDF, pdfMeta));
-  });
-
-  it("rejeita arquivo maior que o limite do slot", async () => {
-    const big = new Uint8Array(2048);
-    await assertFails(uploadBytes(ref(alice().storage(), "users/alice/materials/m1/original.pdf"), big, pdfMeta));
-  });
-
-  it("o cliente não exclui arquivos (somente o backend)", async () => {
-    await assertFails(deleteObject(ref(alice().storage(), "users/alice/materials/m2/original.pdf")));
   });
 });

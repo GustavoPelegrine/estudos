@@ -12,7 +12,8 @@ const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(8080),
   FIREBASE_PROJECT_ID: z.string().min(1).default("demo-estudos-odonto"),
-  FIREBASE_STORAGE_BUCKET: z.string().optional(),
+  /** JSON (ou base64) da conta de serviço do Firebase — usado na Vercel. Segredo: nunca versionar. */
+  FIREBASE_SERVICE_ACCOUNT: z.string().optional(),
   /** Origens permitidas para CORS (em produção o Firebase Hosting faz proxy de /api, então pode ficar vazio). */
   CORS_ORIGINS: csv,
   /** Se preenchido, apenas estes e-mails podem usar a API (protege a cota de IA de cadastros indesejados). */
@@ -24,6 +25,8 @@ const schema = z.object({
   GEMINI_MODEL: z.string().default("gemini-3.8-flash"),
   GEMINI_TIMEOUT_MS: z.coerce.number().int().positive().default(45_000),
   GEMINI_MAX_RETRIES: z.coerce.number().int().min(0).max(4).default(2),
+  /** Tempo total máximo de uma operação de IA (todas as tentativas). Deve caber no limite da função (Vercel: 60 s). */
+  AI_TIME_BUDGET_MS: z.coerce.number().int().positive().default(55_000),
 
   AI_DAILY_LIMIT_PER_USER: z.coerce.number().int().positive().default(60),
   AI_DAILY_LIMIT_GLOBAL: z.coerce.number().int().positive().default(400),
@@ -38,7 +41,6 @@ const schema = z.object({
   MAX_QUESTIONS_PER_QUIZ: z.coerce.number().int().positive().max(30).default(20),
   MAX_FLASHCARDS_PER_REQUEST: z.coerce.number().int().positive().max(40).default(20),
   MAX_MATERIALS_PER_REQUEST: z.coerce.number().int().positive().default(5),
-  PDF_PROCESS_TIMEOUT_MS: z.coerce.number().int().positive().default(90_000),
 });
 
 export type Config = z.infer<typeof schema> & {
@@ -48,7 +50,9 @@ export type Config = z.infer<typeof schema> & {
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
-  const parsed = schema.safeParse(env);
+  // Na Vercel (VERCEL=1) o ambiente é sempre produção. NODE_ENV não deve ser cadastrado lá:
+  // ele também valeria na instalação e impediria o npm de instalar as ferramentas de build.
+  const parsed = schema.safeParse(env.VERCEL && !env.NODE_ENV ? { ...env, NODE_ENV: "production" } : env);
   if (!parsed.success) {
     const fields = parsed.error.issues.map((i) => i.path.join(".")).join(", ");
     throw new Error(`Configuração inválida nas variáveis: ${fields}`);

@@ -1,45 +1,49 @@
 # Arquitetura
 
-## Visão geral
+## Visão geral (versão custo zero)
 
 ```
-Navegador (React)                 Firebase Hosting                Cloud Run (Node/Express)          Google
-───────────────────               ────────────────                ────────────────────────          ──────
-Login (Firebase Auth SDK) ───────────────────────────────────────────────────────────────────────▶ Firebase Auth
-Upload do PDF (Storage SDK) ─────────────────────────────────────────────────────────────────────▶ Storage (regras)
-fetch /api/* + ID token  ──▶  rewrite /api/** ──▶  verifica token → valida → Firestore/Storage (Admin SDK)
-                                                    └─ IA: recupera trechos (BM25) → Gemini API (chave só aqui)
+Navegador (React)                          Vercel (Hobby)                         Google (planos gratuitos)
+─────────────────                          ──────────────                         ─────────────────────────
+Login (Firebase Auth SDK) ──────────────────────────────────────────────────────▶ Firebase Authentication
+PDF lido NO APARELHO (PDF.js) → texto
+fetch /api/* + ID token  ──▶  site estático + função /api (Express)
+                              verifica token → valida → Firestore (Admin SDK) ──▶ Cloud Firestore (Spark)
+                              IA: trechos relevantes (BM25) ──────────────────────▶ Gemini API (nível gratuito)
 ```
 
-* **O navegador nunca grava no Firestore**: todas as escritas passam pelo backend, que valida dados,
-  aplica limites e mantém contadores consistentes. O único acesso direto é o *upload* do PDF para um caminho
-  reservado pelo backend, validado pelas regras do Storage.
+* **O PDF não sai do aparelho.** O texto é extraído no navegador com o mesmo algoritmo testado em Node
+  (`shared/src/pdf`) e só o texto é enviado, em lotes. O servidor recalcula o relatório de extração a partir do que
+  recebeu (não confia nos números do cliente). Isso elimina o Firebase Storage, que exige plano pago.
+* **O navegador nunca grava no Firestore**: todas as escritas passam pelo backend, que valida dados, aplica limites
+  e mantém contadores consistentes. As regras do Firestore permitem apenas leitura dos próprios dados.
 * **O uid vem sempre do token verificado** (`req.user.uid`). Nenhuma rota aceita `ownerUid`/`uid` do cliente;
   os caminhos são montados em um único lugar (`server/src/lib/paths.ts`).
-* **A chave da Gemini fica só no backend** (variável de ambiente / Secret Manager), enviada no cabeçalho
-  `x-goog-api-key` (nunca na URL, para não aparecer em logs).
+* **Segredos só no backend** (variáveis de ambiente da Vercel): chave da Gemini (enviada no cabeçalho
+  `x-goog-api-key`, nunca na URL) e credencial da conta de serviço do Firebase.
 
-## Por que Cloud Run (e não Cloud Functions)
+## Por que Vercel
 
-Cloud Run executa o mesmo Express usado em desenvolvimento, sem adaptação; suporta requisições longas
-(extração de PDF e IA, até 60 s pelo rewrite do Hosting), escala a zero e tem cota gratuita mensal. Funções
-de 2ª geração também rodam sobre o Cloud Run — a escolha direta evita uma camada extra.
+Firebase Spark não permite Cloud Functions nem Cloud Run (exigem plano Blaze). A Vercel Hobby hospeda o site e uma
+função Node sem cartão, no mesmo domínio (sem CORS). O build gera `.vercel/output` no formato *Build Output API v3*
+(`scripts/build-vercel.mjs`): o Express é empacotado com esbuild e as dependências são rastreadas com `@vercel/nft`.
+`npm run preview:vercel` simula localmente esse pacote; o teste E2E roda contra ele.
+
+O mesmo Express roda como servidor comum (`server/src/index.ts`) em desenvolvimento ou em qualquer hospedagem Node.
 
 ## Fluxo de um material
 
-1. `POST /api/materials` reserva o material (`status: awaiting_upload`, `maxBytes`) e devolve o caminho
-   `users/{uid}/materials/{id}/original.pdf`.
-2. O navegador envia o PDF ao Storage. As regras só aceitam se o slot existir, estiver aguardando,
-   for do próprio usuário, tiver `contentType` PDF e tamanho ≤ `maxBytes`, e sem sobrescrever.
-3. `POST /api/materials/{id}/process` (transação impede reprocessamento por clique duplo): o backend baixa o
-   arquivo, confere tamanho/tipo/assinatura `%PDF-`, extrai o texto por página e grava `pages/{n}`.
-   Status resultante: `needs_review`, `needs_ocr` ou `failed` (com mensagem).
-4. A estudante confere o texto ao lado do PDF original, corrige páginas se preciso e **aprova** (`ready`).
-   Só materiais `ready` podem ser usados pela IA.
+1. A estudante escolhe o PDF; o navegador extrai o texto página a página (com barra de progresso).
+2. `POST /api/materials` registra o material (`status: processing`, `pageCount`).
+3. `POST /api/materials/{id}/pages` recebe as páginas em lotes (≤ 25 páginas / 600 mil caracteres por lote).
+4. `POST /api/materials/{id}/finalize` confere se todas as páginas chegaram e calcula o relatório:
+   `needs_review` ou `needs_ocr`. Envios interrompidos aparecem como falha após 15 minutos.
+5. A estudante confere o texto ao lado do PDF original (aberto localmente, nunca enviado), corrige páginas se
+   preciso e **aprova** (`ready`). Só materiais `ready` podem ser usados pela IA.
 
-## Extração de PDF (`server/src/pdf`)
+## Extração de PDF (`shared/src/pdf`)
 
-PDF.js 6 (build *legacy* para Node) fornece fragmentos com posição. O algoritmo próprio (`layout.ts`):
+PDF.js 6 (build *legacy*, no navegador e em Node — o build padrão usa APIs de JavaScript recentes demais para Safari/Chrome antigos) fornece fragmentos com posição. O algoritmo próprio (`layout.ts`):
 
 * agrupa fragmentos em linhas pela linha de base e insere espaço **somente** quando há separação visual
   proporcional ao corpo da fonte (evita “frag mentadas” e também evita unir palavras distintas);

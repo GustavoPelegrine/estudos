@@ -1,7 +1,7 @@
 import express, { type NextFunction, type Request, type Response } from "express";
 import helmet from "helmet";
 import { z } from "zod";
-import type { MeResponse } from "@estudos/shared";
+import { PAGES_BATCH_MAX_CHARS, PAGES_BATCH_SIZE, type MeResponse } from "@estudos/shared";
 import type { AiService } from "./ai/service.js";
 import type { Config } from "./config.js";
 import type { FirebaseServices } from "./firebase.js";
@@ -38,7 +38,7 @@ const h = (fn: Handler) => (req: Request, res: Response, next: NextFunction) => 
 
 export function createApp(deps: AppDeps) {
   const { config, firebase, ai } = deps;
-  const ctx = { db: firebase.db, bucket: firebase.bucket, config, ai };
+  const ctx = { db: firebase.db, config, ai };
   const app = express();
   app.disable("x-powered-by");
   app.set("trust proxy", 1);
@@ -81,6 +81,7 @@ export function createApp(deps: AppDeps) {
         usage: { ...usage, aiDailyLimit: config.AI_DAILY_LIMIT_PER_USER },
         limits: {
           maxPdfBytes: config.maxPdfBytes,
+          maxPdfPages: config.MAX_PDF_PAGES,
           maxMaterials: config.MAX_MATERIALS_PER_USER,
           maxQuestionsPerQuiz: config.MAX_QUESTIONS_PER_QUIZ,
           maxFlashcardsPerRequest: config.MAX_FLASHCARDS_PER_REQUEST,
@@ -147,13 +148,46 @@ export function createApp(deps: AppDeps) {
 
   // ---------- Materiais ----------
   api.get("/materials", h(async (req) => ({ materials: await materials.listMaterials(ctx, currentUser(req).uid) })));
+  // PDF lido no navegador: registro + texto em lotes + finalização (o arquivo não é enviado).
   api.post(
     "/materials",
     h(async (req) => {
-      const body = parse(z.object({ subjectId: docId, topic: shortText(140).optional(), fileName: shortText(200).min(1), sizeBytes: z.number().int().positive() }).strict(), req.body);
-      return materials.createPdfMaterial(ctx, currentUser(req).uid, body);
+      const body = parse(
+        z
+          .object({
+            subjectId: docId,
+            topic: shortText(140).optional(),
+            fileName: shortText(200).min(1),
+            sizeBytes: z.number().int().positive(),
+            pageCount: z.number().int().min(1).max(5000),
+            warnings: z.array(z.string().max(500)).max(20).default([]),
+          })
+          .strict(),
+        req.body,
+      );
+      return { material: await materials.createPdfMaterial(ctx, currentUser(req).uid, body) };
     }),
   );
+  api.post(
+    "/materials/:id/pages",
+    bigJson,
+    h(async (req) => {
+      const body = parse(
+        z
+          .object({
+            pages: z
+              .array(z.object({ page: z.number().int().min(1).max(5000), text: z.string().max(100_000), hasText: z.boolean(), layout: z.enum(["single", "columns", "empty"]) }).strict())
+              .min(1)
+              .max(PAGES_BATCH_SIZE)
+              .refine((pages) => pages.reduce((n, p) => n + p.text.length, 0) <= PAGES_BATCH_MAX_CHARS, "lote grande demais"),
+          })
+          .strict(),
+        req.body,
+      );
+      return materials.addPages(ctx, currentUser(req).uid, parse(docId, req.params.id), body.pages);
+    }),
+  );
+  api.post("/materials/:id/finalize", h(async (req) => ({ material: await materials.finalizePdfMaterial(ctx, currentUser(req).uid, parse(docId, req.params.id)) })));
   api.post(
     "/materials/notes",
     bigJson,
@@ -177,7 +211,6 @@ export function createApp(deps: AppDeps) {
       return { ok: true };
     }),
   );
-  api.post("/materials/:id/process", h(async (req) => ({ material: await materials.processMaterial(ctx, currentUser(req).uid, parse(docId, req.params.id)) })));
   api.post("/materials/:id/approve", h(async (req) => ({ material: await materials.approveMaterial(ctx, currentUser(req).uid, parse(docId, req.params.id)) })));
   api.get(
     "/materials/:id/pages",
@@ -194,21 +227,6 @@ export function createApp(deps: AppDeps) {
       return { page: await materials.updatePageText(ctx, currentUser(req).uid, parse(docId, req.params.id), page, body.text) };
     }),
   );
-  api.get("/materials/:id/file", async (req, res, next) => {
-    try {
-      const { material, stream } = await materials.openPdfStream(ctx, currentUser(req).uid, parse(docId, req.params.id));
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Cache-Control", "private, no-store");
-      res.setHeader("Content-Disposition", `inline; filename*=UTF-8''${encodeURIComponent(material.fileName)}`);
-      // O PDF é exibido em um <iframe> do próprio site.
-      res.setHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'self'");
-      res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
-      stream.on("error", (err) => next(err));
-      stream.pipe(res);
-    } catch (err) {
-      next(err);
-    }
-  });
 
   // ---------- Flashcards ----------
   api.get(

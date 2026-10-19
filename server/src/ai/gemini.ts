@@ -47,6 +47,7 @@ export class GeminiProvider implements AiProvider {
     let lastError: AiError | null = null;
     for (let attempt = 0; attempt <= this.options.maxRetries; attempt++) {
       if (attempt > 0) await this.sleep(Math.min(8000, 1000 * 2 ** (attempt - 1)) + Math.floor(Math.random() * 250));
+      if (signal?.aborted) break;
       try {
         return await this.once(req, signal);
       } catch (err) {
@@ -55,7 +56,7 @@ export class GeminiProvider implements AiProvider {
         log.warn("gemini_retry", { attempt: attempt + 1, kind: lastError.kind });
       }
     }
-    throw lastError ?? new AiError("unavailable", "Falha de comunicação com a IA.");
+    throw lastError ?? new AiError("timeout", "A IA demorou demais para responder.");
   }
 
   private async once(req: AiRequest, outerSignal?: AbortSignal): Promise<AiResponse> {

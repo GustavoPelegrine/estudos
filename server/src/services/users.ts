@@ -148,9 +148,8 @@ export async function exportUserData(deps: MaterialDeps, uid: string): Promise<R
   };
 }
 
-/** Exclui definitivamente todos os dados do usuário (Firestore + Storage). A conta de login é removida pelo cliente. */
+/** Exclui definitivamente todos os dados do usuário no Firestore. A conta de login é removida pelo cliente. */
 export async function deleteAllUserData(deps: MaterialDeps, uid: string): Promise<void> {
-  await deps.bucket.deleteFiles({ prefix: `users/${uid}/`, force: true });
   await deps.db.recursiveDelete(userPaths(deps.db, uid).user);
 }
 

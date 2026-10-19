@@ -124,7 +124,7 @@ export function SettingsPage() {
         </div>
         <div className="panel stack">
           <h2>Seus dados</h2>
-          <p className="muted small" style={{ margin: 0 }}>Exporte uma cópia de todos os seus textos, flashcards, simulados e conversas (os PDFs originais podem ser baixados em cada material).</p>
+          <p className="muted small" style={{ margin: 0 }}>Exporte uma cópia de todos os seus textos, flashcards, simulados e conversas (os PDFs originais ficam apenas nos seus aparelhos e não são enviados).</p>
           <div className="row">
             <button className="btn" onClick={() => void exportData()} disabled={busy}>Exportar dados (JSON)</button>
             <button className="btn" onClick={importLegacy} disabled={busy}>Importar backup da versão antiga</button>
@@ -132,7 +132,7 @@ export function SettingsPage() {
           <p className="footer-note" style={{ marginTop: 0 }}>A importação aceita o arquivo “backup-estudos-odonto.json” gerado pelo botão “Exportar dados” da versão HTML anterior.</p>
           <h3>Privacidade</h3>
           <ul className="small muted" style={{ margin: 0, paddingLeft: 18 }}>
-            <li>Os PDFs ficam em armazenamento privado, sem links públicos.</li>
+            <li>Os PDFs são lidos no seu aparelho e não são enviados: só o texto extraído é salvo na sua conta.</li>
             <li>Para gerar questões, flashcards e respostas, apenas trechos relevantes dos materiais selecionados são enviados à Gemini API pelo servidor.</li>
             <li>A IA pode errar. Confira sempre as páginas citadas.</li>
           </ul>

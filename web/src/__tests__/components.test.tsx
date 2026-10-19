@@ -2,7 +2,7 @@ import { act, fireEvent, render, renderHook, screen } from "@testing-library/rea
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("../lib/firebase", () => ({ auth: { currentUser: null }, storage: {}, usingEmulators: false }));
+vi.mock("../lib/firebase", () => ({ auth: { currentUser: null }, usingEmulators: false }));
 import type { Material } from "@estudos/shared";
 import { MaterialPicker } from "../components/MaterialPicker";
 import { PageText } from "../pages/ContentPage";

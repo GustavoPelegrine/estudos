@@ -29,12 +29,12 @@ export interface Subject {
 export type MaterialKind = "pdf" | "notes";
 
 /**
- * Ciclo de vida de um material:
- * awaiting_upload → processing → needs_review → ready
+ * Ciclo de vida de um material (o PDF é lido no navegador; só o texto é enviado):
+ * processing (recebendo texto) → needs_review → ready
  *                              ↘ needs_ocr (PDF digitalizado, sem texto extraível)
- *                              ↘ failed
+ *                              ↘ failed (envio interrompido)
  */
-export type MaterialStatus = "awaiting_upload" | "processing" | "needs_review" | "needs_ocr" | "ready" | "failed";
+export type MaterialStatus = "processing" | "needs_review" | "needs_ocr" | "ready" | "failed";
 
 export interface ExtractionReport {
   pageCount: number;
@@ -208,6 +208,7 @@ export interface UsageInfo {
 
 export interface Limits {
   maxPdfBytes: number;
+  maxPdfPages: number;
   maxMaterials: number;
   maxQuestionsPerQuiz: number;
   maxFlashcardsPerRequest: number;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { extractPdf, looksLikePdf, PdfExtractionError } from "../../src/pdf/extract.js";
-import { collapseLetterSpaced, joinLines, layoutPage, type RawTextItem } from "../../src/pdf/layout.js";
+import { collapseLetterSpaced, joinLines, layoutPage, type RawTextItem } from "@estudos/shared/pdf";
 import { makeMixedPdf, makeScannedPdf, makeTextPdf, makeTwoColumnPdf } from "../fixtures/pdfs.js";
 
 const opts = { maxPages: 50, maxCharsPerPage: 100_000, timeoutMs: 20_000 };

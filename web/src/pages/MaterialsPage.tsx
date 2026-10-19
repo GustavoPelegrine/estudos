@@ -7,7 +7,26 @@ import { useToast } from "../components/Toast";
 import { useAction, useApi } from "../hooks/useApi";
 import { api, ApiError } from "../lib/api";
 import { formatBytes, formatDate, STATUS_LABEL } from "../lib/format";
-import { uploadPdf } from "../lib/upload";
+import { PAGES_BATCH_MAX_CHARS, PAGES_BATCH_SIZE, type MaterialPage } from "@estudos/shared";
+import { extractPdfInBrowser, rememberLocalPdf } from "../lib/pdf";
+
+/** Divide as páginas em lotes pequenos (limite de corpo das funções serverless). */
+function batches(pages: MaterialPage[]): MaterialPage[][] {
+  const out: MaterialPage[][] = [];
+  let cur: MaterialPage[] = [];
+  let chars = 0;
+  for (const p of pages) {
+    if (cur.length && (cur.length >= PAGES_BATCH_SIZE || chars + p.text.length > PAGES_BATCH_MAX_CHARS)) {
+      out.push(cur);
+      cur = [];
+      chars = 0;
+    }
+    cur.push(p);
+    chars += p.text.length;
+  }
+  if (cur.length) out.push(cur);
+  return out;
+}
 
 const SEMESTERS = Array.from({ length: 12 }, (_, i) => i + 1);
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : "Erro inesperado.");
@@ -116,24 +135,44 @@ function UploadPanel({ subjects, onDone }: { subjects: Subject[]; onDone: () => 
       setError(null);
       let createdId: string | null = null;
       try {
-        setStage("Reservando espaço privado…");
-        const { material, uploadPath } = await api.createMaterial({ subjectId: effectiveSubject, topic: topic.trim() || undefined, fileName: file.name, sizeBytes: file.size });
+        // 1) Leitura no próprio navegador: o arquivo não sai do aparelho.
+        setStage("Lendo o PDF neste dispositivo…");
+        const { pages, report } = await extractPdfInBrowser(file, {
+          maxPages: me?.limits.maxPdfPages ?? 400,
+          onProgress: (page, total) => {
+            setStage(`Lendo a página ${page} de ${total} neste dispositivo…`);
+            setProgress(page / total);
+          },
+        });
+        // 2) Registro do material e envio apenas do texto, em lotes.
+        setStage("Salvando o texto extraído…");
+        setProgress(0);
+        const { material } = await api.createPdfMaterial({
+          subjectId: effectiveSubject,
+          topic: topic.trim() || undefined,
+          fileName: file.name,
+          sizeBytes: file.size,
+          pageCount: report.pageCount,
+          warnings: report.warnings,
+        });
         createdId = material.id;
-        setStage("Enviando arquivo…");
-        await uploadPdf(uploadPath, file, setProgress);
-        setStage("Lendo e extraindo o texto (pode levar alguns segundos)…");
-        const { material: processed } = await api.processMaterial(material.id);
+        const parts = batches(pages);
+        for (const [i, part] of parts.entries()) {
+          await api.uploadPages(material.id, part.map(({ page, text, hasText, layout }) => ({ page, text, hasText, layout })));
+          setProgress((i + 1) / parts.length);
+        }
+        const { material: saved } = await api.finalizeMaterial(material.id);
         createdId = null;
+        rememberLocalPdf(saved.id, file);
         await onDone();
         setFile(null);
         setTopic("");
         if (fileRef.current) fileRef.current.value = "";
-        if (processed.status === "failed") toast(processed.errorMessage ?? "Falha ao ler o PDF.", "error");
-        else toast(processed.status === "needs_ocr" ? "PDF sem texto extraível: confira os detalhes." : "Texto extraído. Confira antes de usar.");
-        navigate(`/materiais/${processed.id}`);
+        toast(saved.status === "needs_ocr" ? "PDF sem texto extraível: confira os detalhes." : "Texto extraído. Confira antes de usar.");
+        navigate(`/materiais/${saved.id}`);
       } catch (err) {
         setError(errMsg(err));
-        // Remove o slot vazio se o envio falhou antes do processamento.
+        // Remove o registro incompleto se o envio falhou no meio.
         if (createdId) await api.deleteMaterial(createdId).catch(() => undefined);
         await onDone();
       } finally {
@@ -187,7 +226,7 @@ function UploadPanel({ subjects, onDone }: { subjects: Subject[]; onDone: () => 
             <label htmlFor="mat-file">Arquivo PDF</label>
             <input ref={fileRef} id="mat-file" type="file" accept="application/pdf,.pdf" onChange={(e) => pickFile(e.target.files?.[0] ?? null)} disabled={busy} />
             <span className="hint">
-              Até {formatBytes(maxBytes)}. O arquivo fica privado na sua conta. PDFs digitalizados (imagem) são identificados e exigem OCR.
+              Até {formatBytes(maxBytes)}. O PDF é lido neste dispositivo e <strong>não é enviado</strong>: só o texto extraído é salvo na sua conta. PDFs digitalizados (imagem) são identificados e exigem OCR.
             </span>
           </div>
         ) : (
@@ -207,12 +246,12 @@ function UploadPanel({ subjects, onDone }: { subjects: Subject[]; onDone: () => 
       {stage && (
         <div className="upload-progress" role="status">
           <span className="small muted"><span className="spinner" aria-hidden="true" /> {stage}</span>
-          {stage.startsWith("Enviando") && <div className="progress"><span style={{ width: `${Math.round(progress * 100)}%` }} /></div>}
+          <div className="progress"><span style={{ width: `${Math.round(progress * 100)}%` }} /></div>
         </div>
       )}
       <div className="row">
         {tab === "pdf" ? (
-          <button className="btn primary" onClick={() => void sendPdf()} disabled={busy || !file}>Enviar e extrair texto</button>
+          <button className="btn primary" onClick={() => void sendPdf()} disabled={busy || !file}>Extrair e salvar texto</button>
         ) : (
           <button className="btn primary" onClick={() => void sendNotes()} disabled={busy || !title.trim() || text.trim().length < 20}>Salvar anotações</button>
         )}
@@ -255,7 +294,7 @@ export function MaterialsPage() {
   });
 
   const remove = (m: Material) => {
-    if (!confirm(`Excluir “${m.fileName}”?\n\nO PDF, o texto extraído e os flashcards gerados a partir dele serão apagados. O histórico de simulados é mantido.`)) return;
+    if (!confirm(`Excluir “${m.fileName}”?\n\nO texto extraído e os flashcards gerados a partir dele serão apagados. O histórico de simulados é mantido.`)) return;
     void run(async () => {
       try {
         await api.deleteMaterial(m.id);
@@ -276,7 +315,7 @@ export function MaterialsPage() {
       <div className="section-title">
         <div>
           <h2>Meu material</h2>
-          <p>Cadastre as disciplinas, envie PDFs privados e confira o texto extraído antes de estudar.</p>
+          <p>Cadastre as disciplinas, extraia o texto dos seus PDFs (lidos no próprio aparelho) e confira antes de estudar.</p>
         </div>
       </div>
       <div className="grid two-col">

@@ -7,7 +7,7 @@ Todo dado privado fica sob `users/{uid}`, onde `uid` é o do Firebase Authentica
 | --- | --- | --- |
 | `users/{uid}` | e-mail, nome, `createdAt`, `preferences` (tema, semestre, nº de questões) | sim (dono) |
 | `users/{uid}/subjects/{id}` | disciplina: `name`, `semester` | sim |
-| `users/{uid}/materials/{id}` | `ownerUid`, `kind` (pdf/notes), `subjectId`, `subjectName`, `semester`, `topic`, `fileName`, `sizeBytes`, `uploadedAt`, `status`, `pageCount`, `extraction` (relatório), `errorMessage`, `studied`, `storagePath`, `maxBytes` | sim |
+| `users/{uid}/materials/{id}` | `ownerUid`, `kind` (pdf/notes), `subjectId`, `subjectName`, `semester`, `topic`, `fileName`, `sizeBytes`, `uploadedAt`, `status`, `pageCount`, `extraction` (relatório calculado no servidor), `errorMessage`, `studied` | sim |
 | `users/{uid}/materials/{id}/pages/{0001}` | `page`, `text` (normalizado), `charCount`, `hasText`, `layout`, `editedByUser` | sim |
 | `users/{uid}/flashcards/{id}` | `front`, `back`, `subjectName`, `topic`, `materialId`, `source` (arquivo/página/trecho), caixa de Leitner `box`, `dueAt`, contadores | sim |
 | `users/{uid}/flashcardReviews/{clientReviewId}` | histórico de revisões (idempotente por id do clique) | sim |
@@ -37,11 +37,11 @@ Todas as escritas são feitas pelo backend (Admin SDK). As regras negam qualquer
 
 | Ação | Efeito |
 | --- | --- |
-| Excluir material | Remove PDF do Storage, páginas e flashcards gerados dele; remove o id das conversas. **Mantém** simulados/respostas e estatísticas (histórico de desempenho) — as referências passam a exibir “material excluído”. |
+| Excluir material | Remove as páginas (texto) e os flashcards gerados dele (o PDF original nunca é enviado); remove o id das conversas. **Mantém** simulados/respostas e estatísticas (histórico de desempenho) — as referências passam a exibir “material excluído”. |
 | Excluir simulado | Remove simulado, gabarito e respostas; estatísticas agregadas permanecem. |
 | Excluir conversa | Remove a conversa e suas mensagens. |
 | Excluir disciplina | Bloqueado enquanto houver materiais vinculados. |
-| Excluir conta (Configurações) | Reautenticação → backend apaga `users/{uid}` recursivamente e `users/{uid}/` no Storage → conta do Auth é removida. |
+| Excluir conta (Configurações) | Reautenticação → backend apaga `users/{uid}` recursivamente → conta do Auth é removida. |
 | Exportar dados | `GET /api/me/export` devolve JSON com todos os dados textuais (portabilidade, LGPD). |
 
 Contadores de uso (`usage`) ainda não expiram sozinhos. Melhoria sugerida: gravar um campo `expireAt`

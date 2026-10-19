@@ -4,7 +4,8 @@ import type { MaterialPage } from "@estudos/shared";
 import { ErrorState, Loading } from "../components/States";
 import { useToast } from "../components/Toast";
 import { useAction, useApi } from "../hooks/useApi";
-import { api, fetchBlob } from "../lib/api";
+import { api } from "../lib/api";
+import { localPdfFor, rememberLocalPdf } from "../lib/pdf";
 import { formatBytes, formatDateTime, STATUS_LABEL } from "../lib/format";
 import { PageText } from "./ContentPage";
 
@@ -25,7 +26,7 @@ export function MaterialDetailPage() {
 
   // Carrega as páginas em lotes conforme a navegação.
   useEffect(() => {
-    if (!m || m.status === "awaiting_upload" || m.status === "processing" || m.status === "failed") return;
+    if (!m || m.status === "processing" || m.status === "failed") return;
     if (pages.some((p) => p.page === current)) return;
     const from = Math.floor((current - 1) / PAGE_BATCH) * PAGE_BATCH + 1;
     api
@@ -33,6 +34,13 @@ export function MaterialDetailPage() {
       .then((r) => setPages((prev) => [...prev.filter((p) => p.page < from || p.page >= from + PAGE_BATCH), ...r.pages].sort((a, b) => a.page - b.page)))
       .catch((err: Error) => toast(err.message, "error"));
   }, [m, current, id, pages, toast]);
+
+  // Reabre automaticamente o PDF escolhido nesta aba (fica só em memória).
+  useEffect(() => {
+    if (m?.kind !== "pdf" || pdfUrl) return;
+    const remembered = localPdfFor(m.id);
+    if (remembered) setPdfUrl(URL.createObjectURL(remembered));
+  }, [m, pdfUrl]);
 
   useEffect(() => () => {
     if (pdfUrl) URL.revokeObjectURL(pdfUrl);
@@ -46,15 +54,13 @@ export function MaterialDetailPage() {
   const ext = m.extraction;
   const reviewable = m.status === "needs_review" || m.status === "needs_ocr";
 
-  const openPdf = () =>
-    run(async () => {
-      try {
-        const blob = await fetchBlob(`/materials/${m.id}/file`);
-        setPdfUrl(URL.createObjectURL(blob));
-      } catch (err) {
-        toast((err as Error).message, "error");
-      }
-    });
+  // O PDF original fica apenas no aparelho: é aberto localmente para comparação, nunca enviado.
+  const openLocalPdf = (file: File | null) => {
+    if (!file) return;
+    rememberLocalPdf(m.id, file);
+    if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+    setPdfUrl(URL.createObjectURL(file));
+  };
 
   const savePage = () =>
     run(async () => {
@@ -79,17 +85,6 @@ export function MaterialDetailPage() {
       }
     });
 
-  const reprocess = () =>
-    run(async () => {
-      try {
-        const { material: updated } = await api.processMaterial(m.id);
-        material.setData(updated);
-        setPages([]);
-      } catch (err) {
-        toast((err as Error).message, "error");
-      }
-    });
-
   const toggleStudied = () =>
     run(async () => {
       const { material: updated } = await api.updateMaterial(m.id, { studied: !m.studied });
@@ -97,7 +92,7 @@ export function MaterialDetailPage() {
     });
 
   const remove = () => {
-    if (!confirm(`Excluir “${m.fileName}”? O PDF, o texto e os flashcards derivados serão apagados.`)) return;
+    if (!confirm(`Excluir “${m.fileName}”? O texto extraído e os flashcards derivados serão apagados (o PDF continua só no seu aparelho).`)) return;
     void run(async () => {
       await api.deleteMaterial(m.id);
       toast("Material excluído.");
@@ -125,15 +120,11 @@ export function MaterialDetailPage() {
 
       {m.status === "failed" && (
         <div className="notice bad stack" role="alert">
-          <span>{m.errorMessage ?? "Falha ao processar o PDF."}</span>
-          <div className="row">
-            <button className="btn sm" onClick={() => void reprocess()} disabled={busy}>Tentar novamente</button>
-            <span className="small">Se o problema persistir, exclua e envie o arquivo de novo.</span>
-          </div>
+          <span>{m.errorMessage ?? "Falha ao salvar o texto do PDF."}</span>
+          <span className="small">Exclua este material e envie o arquivo de novo.</span>
         </div>
       )}
-      {m.status === "awaiting_upload" && <div className="notice warn">O arquivo ainda não foi enviado. Exclua este registro e envie o PDF novamente.</div>}
-      {m.status === "processing" && <div className="notice">Processando o PDF… <button className="btn sm" onClick={() => void material.reload()}>Atualizar</button></div>}
+      {m.status === "processing" && <div className="notice">Recebendo o texto extraído… <button className="btn sm" onClick={() => void material.reload()}>Atualizar</button></div>}
 
       {ext && (
         <div className="panel stack">
@@ -221,8 +212,13 @@ export function MaterialDetailPage() {
               ) : (
                 <div className="empty">
                   <strong>Compare com o original</strong>
-                  O arquivo é baixado de forma autenticada; não existe link público.
-                  <div style={{ marginTop: 10 }}><button className="btn" onClick={() => void openPdf()} disabled={busy}>Carregar PDF</button></div>
+                  O PDF fica só no seu aparelho (não é enviado para a nuvem). Abra o arquivo para conferir lado a lado.
+                  <div style={{ marginTop: 10 }}>
+                    <label className="btn" style={{ cursor: "pointer" }}>
+                      Abrir PDF deste aparelho
+                      <input type="file" accept="application/pdf,.pdf" className="sr-only" onChange={(e) => openLocalPdf(e.target.files?.[0] ?? null)} />
+                    </label>
+                  </div>
                 </div>
               )}
             </div>

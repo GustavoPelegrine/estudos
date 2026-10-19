@@ -10,7 +10,7 @@
     "web"
   ],
   "engines": {
-    "node": ">=22.13"
+    "node": "22.x"
   },
   "scripts": {
     "dev:emulators": "node scripts/emulators.mjs start",
@@ -22,10 +22,13 @@
     "test:emulator": "node scripts/emulators.mjs exec \"npm run test:integration -w server && npm run test:rules\"",
     "test:rules": "vitest run --config tests/rules/vitest.config.ts",
     "test": "npm run test:unit && npm run test:emulator",
-    "e2e": "node scripts/e2e.mjs"
+    "e2e": "node scripts/e2e.mjs",
+    "build:vercel": "node scripts/build-vercel.mjs",
+    "preview:vercel": "node scripts/serve-vercel-output.mjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0",
+    "@vercel/nft": "^1.11.0",
     "firebase": "^13.0.0",
     "firebase-tools": "^15.34.0",
     "playwright": "^1.64.1",

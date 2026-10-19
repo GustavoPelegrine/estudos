@@ -1,19 +1,10 @@
-import { FakeAiProvider } from "./ai/fake.js";
-import { GeminiProvider } from "./ai/gemini.js";
-import type { AiProvider } from "./ai/provider.js";
+// Servidor HTTP para desenvolvimento local (e para quem preferir rodar em um servidor próprio).
 import { AiService } from "./ai/service.js";
 import { createApp } from "./app.js";
-import { loadConfig, type Config } from "./config.js";
+import { loadConfig } from "./config.js";
 import { initFirebase } from "./firebase.js";
 import { log } from "./lib/log.js";
-
-export function createAiProvider(config: Config): AiProvider | null {
-  if (config.aiProvider === "gemini") {
-    return new GeminiProvider({ apiKey: config.GEMINI_API_KEY as string, model: config.GEMINI_MODEL, timeoutMs: config.GEMINI_TIMEOUT_MS, maxRetries: config.GEMINI_MAX_RETRIES });
-  }
-  if (config.aiProvider === "fake") return new FakeAiProvider();
-  return null;
-}
+import { createAiProvider } from "./providers.js";
 
 const config = loadConfig();
 const firebase = initFirebase(config);

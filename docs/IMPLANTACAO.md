@@ -1,87 +1,95 @@
-# Implantação
+# Publicação sem custo (Firebase Spark + Vercel Hobby + Gemini gratuita)
 
-Nada é publicado automaticamente. Todos os passos abaixo dependem da sua conta Google.
-Região sugerida: `southamerica-east1` (São Paulo).
+Tudo é feito **pelo navegador**: não é preciso instalar Node, npm nem nenhuma ferramenta no computador.
+A Vercel baixa o código do GitHub, faz o build nos servidores dela e publica o site.
 
-## 1. Projeto Firebase
+| Peça | Serviço | Plano | Cartão? |
+| --- | --- | --- | --- |
+| Login e banco de dados | Firebase Authentication + Cloud Firestore | Spark (gratuito) | Não |
+| Site e API | Vercel | Hobby (gratuito, uso pessoal e não comercial) | Não |
+| IA | Gemini API (Google AI Studio) | Nível gratuito | Não |
+| PDFs | Ficam no aparelho da estudante (o texto é extraído no navegador) | — | — |
 
-1. Crie um projeto em <https://console.firebase.google.com> e **ative o plano Blaze** (necessário para Storage
-   e Cloud Run — ver [CUSTOS.md](CUSTOS.md)). Crie o alerta de orçamento antes de continuar.
-2. **Authentication** → Métodos de login → habilite **E-mail/senha**. Em Configurações: domínios autorizados,
-   proteção contra enumeração de e-mail e política de senha.
-3. **Firestore** → criar banco (modo produção) na região escolhida.
-4. **Storage** → criar o bucket padrão.
-5. Configurações do projeto → Seus apps → adicionar app **Web** → copie a configuração para `web/.env.production`
-   (modelo em `web/.env.example`; esses valores são públicos).
+> Leia [CUSTOS.md](CUSTOS.md) para entender os limites gratuitos e o que fazer se forem atingidos.
 
-```bash
-npm install -g firebase-tools   # ou use npx firebase
-firebase login
-cp .firebaserc.example .firebaserc   # e coloque o id do projeto
-```
+## 1. Firebase (projeto já criado: plano Spark)
 
-## 2. Gemini API
+1. **Authentication** → Primeiros passos → Método de login → ative **E-mail/senha** (deixe "Link do e-mail" desativado).
+   Em *Configurações*: confira a **proteção contra enumeração de e-mail** (ativada) e, se quiser, a política de senha.
+2. **Firestore Database** → Criar banco de dados → **modo de produção** → local `southamerica-east1 (São Paulo)`.
+   O local não pode ser alterado depois.
+3. **Firestore → Regras**: apague o conteúdo, cole o arquivo [`firestore.rules`](../firestore.rules) inteiro e clique em **Publicar**.
+   (Nenhum índice composto é necessário.)
+4. **Configurações do projeto (engrenagem) → Geral → Seus apps → `</>` (Web)**: registre o app com um apelido
+   (ex.: "portal"). **Não** marque "Firebase Hosting". Anote os valores `apiKey`, `authDomain`, `projectId` e `appId`.
+   Esses valores são públicos (identificam o projeto); a segurança vem das regras e do backend.
+5. **Configurações do projeto → Contas de serviço → Gerar nova chave privada**. Será baixado um arquivo `.json`.
+   ⚠ **Este arquivo é um segredo** (dá acesso administrativo ao banco). Não envie por e-mail/chat, não coloque no GitHub
+   e apague-o do computador depois de colar na Vercel (passo 3.4).
 
-1. Crie uma chave em <https://aistudio.google.com> (Get API key) **no mesmo projeto Google Cloud**.
-   A assinatura do app Gemini não é a mesma coisa que acesso à API.
-2. Restrinja a chave à *Generative Language API* (Console Cloud → APIs e serviços → Credenciais).
-3. Teste localmente sem gravar a chave no Git:
-   ```bash
-   echo "GEMINI_API_KEY=cole-aqui" >> server/.env      # server/.env é ignorado pelo Git
-   npm run check:gemini -w server                      # confirma o modelo gemini-3.8-flash e a resposta JSON
-   ```
-   Se o modelo não estiver disponível para sua chave, o script lista os disponíveis; ajuste `GEMINI_MODEL`.
-4. Guarde a chave no Secret Manager:
-   ```bash
-   printf "%s" "SUA_CHAVE" | gcloud secrets create gemini-api-key --data-file=- --project SEU_PROJETO
-   ```
+## 2. Chave da Gemini (gratuita)
 
-## 3. Regras de segurança
+1. Acesse <https://aistudio.google.com> com a mesma conta Google → **Get API key → Create API key**
+   (escolha o projeto do Firebase). **Não** ative faturamento para continuar no nível gratuito.
+2. Guarde a chave para o passo 3.4. Ela também é um segredo.
+3. Atenção: no nível gratuito o Google pode usar o conteúdo enviado (trechos das apostilas e perguntas) para melhorar
+   os produtos dele, e há limites de requisições por minuto/dia.
 
-```bash
-npm run test:emulator                                  # testes das regras e da API
-firebase deploy --only firestore:rules,firestore:indexes,storage
-```
+## 3. Vercel
 
-## 4. Backend (Cloud Run)
+1. Crie a conta em <https://vercel.com/signup> com **Continue with GitHub** (plano *Hobby*).
+2. **Add New → Project → Import** o repositório `GustavoPelegrine/estudos` (autorize o acesso da Vercel a ele).
+3. Em *Configure Project*: **Framework Preset = Other**. Build e instalação já estão em [`vercel.json`](../vercel.json)
+   (não altere).
+4. Em **Environment Variables**, cadastre (em *Production* e *Preview*):
 
-```bash
-gcloud iam service-accounts create estudos-odonto-api --project SEU_PROJETO
-for role in roles/datastore.user roles/firebaseauth.viewer; do
-  gcloud projects add-iam-policy-binding SEU_PROJETO --member "serviceAccount:estudos-odonto-api@SEU_PROJETO.iam.gserviceaccount.com" --role $role
-done
-gcloud storage buckets add-iam-policy-binding gs://SEU_PROJETO.firebasestorage.app --member "serviceAccount:estudos-odonto-api@SEU_PROJETO.iam.gserviceaccount.com" --role roles/storage.objectAdmin
-gcloud secrets add-iam-policy-binding gemini-api-key --member "serviceAccount:estudos-odonto-api@SEU_PROJETO.iam.gserviceaccount.com" --role roles/secretmanager.secretAccessor
+   | Nome | Valor |
+   | --- | --- |
+   | `VITE_FIREBASE_API_KEY` | `apiKey` do passo 1.4 |
+   | `VITE_FIREBASE_AUTH_DOMAIN` | `authDomain` do passo 1.4 |
+   | `VITE_FIREBASE_PROJECT_ID` | `projectId` do passo 1.4 |
+   | `VITE_FIREBASE_APP_ID` | `appId` do passo 1.4 |
+   | `FIREBASE_PROJECT_ID` | `projectId` do passo 1.4 |
+   | `FIREBASE_SERVICE_ACCOUNT` | conteúdo **inteiro** do arquivo `.json` do passo 1.5 (marque como *Sensitive*) |
+   | `AI_PROVIDER` | `gemini` |
+   | `GEMINI_API_KEY` | chave do passo 2 (marque como *Sensitive*) |
+   | `GEMINI_MODEL` | `gemini-3.8-flash` |
+   | `ALLOWED_EMAILS` | e-mail(s) de quem pode usar o portal, separados por vírgula |
+   | `AI_DAILY_LIMIT_PER_USER` | `40` (sugestão para o nível gratuito) |
+   | `AI_DAILY_LIMIT_GLOBAL` | `100` |
 
-# Build da imagem (a partir da raiz) e deploy
-gcloud builds submit --config cloudbuild.yaml --project SEU_PROJETO \
-  --substitutions _IMAGE=southamerica-east1-docker.pkg.dev/SEU_PROJETO/apps/estudos-odonto-api
-gcloud run deploy estudos-odonto-api \
-  --image southamerica-east1-docker.pkg.dev/SEU_PROJETO/apps/estudos-odonto-api \
-  --region southamerica-east1 --service-account estudos-odonto-api@SEU_PROJETO.iam.gserviceaccount.com \
-  --allow-unauthenticated --max-instances 2 --memory 1Gi --timeout 120 \
-  --set-env-vars NODE_ENV=production,FIREBASE_PROJECT_ID=SEU_PROJETO,FIREBASE_STORAGE_BUCKET=SEU_PROJETO.firebasestorage.app,AI_PROVIDER=gemini,GEMINI_MODEL=gemini-3.8-flash,ALLOWED_EMAILS=email.da.estudante@exemplo.com \
-  --set-secrets GEMINI_API_KEY=gemini-api-key:latest
-```
+   Não cadastre `NODE_ENV` (a Vercel já indica produção; cadastrá-la quebra a instalação do build).
 
-(Crie antes o repositório do Artifact Registry `apps`: `gcloud artifacts repositories create apps --repository-format docker --location southamerica-east1`.)
+5. Clique em **Deploy**. Ao final a Vercel mostra o endereço, por exemplo `https://estudos-xxxx.vercel.app`.
+6. Opcional: *Settings → Functions → Function Region* → **São Paulo (gru1)**, se disponível no seu plano (fica mais
+   perto do Firestore). Depois, *Deployments → … → Redeploy*.
+7. Apague do computador o arquivo `.json` da conta de serviço.
 
-`--allow-unauthenticated` libera apenas o acesso HTTP; **cada rota exige o ID token do Firebase**. O nome do
-serviço e a região precisam coincidir com o `rewrites` de `firebase.json`.
+## 4. Autorizar o domínio no Firebase
 
-## 5. Frontend (Firebase Hosting)
+**Authentication → Configurações → Domínios autorizados → Adicionar domínio** → cole o domínio da Vercel
+(ex.: `estudos-xxxx.vercel.app`, sem `https://`).
 
-```bash
-npm run build -w web          # usa web/.env.production
-firebase deploy --only hosting
-```
+## 5. Primeiro acesso
 
-O Hosting serve o app e encaminha `/api/**` ao Cloud Run (mesma origem: sem CORS, sem expor a URL do serviço).
+1. Abra o endereço da Vercel → **Criar conta** com o e-mail que está em `ALLOWED_EMAILS`.
+2. *Meu material* → cadastre uma disciplina → selecione um PDF → **Extrair e salvar texto** → confira → **liberar para estudo**.
+3. Gere algumas questões para confirmar que a Gemini está respondendo. Se aparecer "A integração com a IA está mal
+   configurada", revise `GEMINI_API_KEY`/`GEMINI_MODEL` na Vercel e faça *Redeploy*.
 
-## 6. Pós-implantação
+A cada novo commit na branch `main`, a Vercel publica automaticamente uma nova versão.
 
-* Siga o checklist de [SEGURANCA.md](SEGURANCA.md).
-* Crie a conta da estudante pelo próprio site (Cadastro) e confirme o e-mail.
-* Se ela tiver dados da versão HTML antiga: na versão antiga, “Exportar dados”; na nova,
-  Configurações → “Importar backup da versão antiga”.
-* Monitore em Cloud Run → Logs (`severity`, `message`) e o uso diário em `users/{uid}/usage`.
+## Se algo der errado
+
+| Sintoma | Causa provável |
+| --- | --- |
+| "Esta conta ainda não tem acesso à plataforma" | O e-mail não está em `ALLOWED_EMAILS` (ou há espaço/maiúscula diferente). |
+| Login falha com erro de domínio | Passo 4 (domínio autorizado) não foi feito. |
+| "Erro interno" ao abrir o painel | `FIREBASE_SERVICE_ACCOUNT` incompleta ou de outro projeto; veja *Vercel → Logs*. |
+| "Limite de uso da Gemini API atingido" | Limite por minuto/dia do nível gratuito; aguarde alguns minutos ou até o dia seguinte. |
+| Site em branco | Variáveis `VITE_*` ausentes no momento do build; cadastre e faça *Redeploy*. |
+
+## Alternativa paga (opcional, futuro)
+
+A primeira versão (Cloud Run + Firebase Storage para guardar os PDFs) continua no histórico do Git
+(commit `94056a3`). Ela exige o plano Blaze (cartão) e só faz sentido se você quiser guardar os PDFs originais na nuvem.

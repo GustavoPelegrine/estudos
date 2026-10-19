@@ -9,7 +9,7 @@ import { initFirebase } from "../../src/firebase.js";
 
 export const PROJECT = "demo-estudos-odonto";
 
-if (!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_AUTH_EMULATOR_HOST || !process.env.FIREBASE_STORAGE_EMULATOR_HOST) {
+if (!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_AUTH_EMULATOR_HOST) {
   throw new Error("Testes de integração exigem os emuladores. Rode: npm run test:emulator (na raiz do projeto).");
 }
 

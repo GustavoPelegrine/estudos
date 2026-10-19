@@ -1,7 +1,8 @@
 import type {
   ChatMessage,
   Conversation,
-  CreateMaterialResponse,
+  CreatePdfMaterialRequest,
+  PagesUpload,
   Flashcard,
   Material,
   MaterialPage,
@@ -61,12 +62,6 @@ export async function request<T>(method: string, path: string, body?: unknown): 
   return data as T;
 }
 
-export async function fetchBlob(path: string): Promise<Blob> {
-  const res = await fetch(`/api${path}`, { headers: await authHeader() });
-  if (!res.ok) throw new ApiError(res.status, "http_error", "Não foi possível abrir o arquivo.");
-  return res.blob();
-}
-
 export const api = {
   me: () => request<MeResponse>("GET", "/me"),
   updatePreferences: (p: Partial<Preferences>) => request<{ preferences: Preferences }>("PATCH", "/me/preferences", p),
@@ -81,9 +76,10 @@ export const api = {
 
   materials: () => request<{ materials: Material[] }>("GET", "/materials"),
   material: (id: string) => request<{ material: Material }>("GET", `/materials/${id}`),
-  createMaterial: (b: { subjectId: string; topic?: string; fileName: string; sizeBytes: number }) => request<CreateMaterialResponse>("POST", "/materials", b),
+  createPdfMaterial: (b: CreatePdfMaterialRequest) => request<{ material: Material }>("POST", "/materials", b),
+  uploadPages: (id: string, pages: PagesUpload["pages"]) => request<{ received: number }>("POST", `/materials/${id}/pages`, { pages }),
+  finalizeMaterial: (id: string) => request<{ material: Material }>("POST", `/materials/${id}/finalize`),
   createNotes: (b: { subjectId: string; topic?: string; title: string; text: string }) => request<{ material: Material }>("POST", "/materials/notes", b),
-  processMaterial: (id: string) => request<{ material: Material }>("POST", `/materials/${id}/process`),
   approveMaterial: (id: string) => request<{ material: Material }>("POST", `/materials/${id}/approve`),
   updateMaterial: (id: string, patch: { topic?: string; studied?: boolean; subjectId?: string }) => request<{ material: Material }>("PATCH", `/materials/${id}`, patch),
   deleteMaterial: (id: string) => request<{ ok: true }>("DELETE", `/materials/${id}`),

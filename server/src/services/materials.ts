@@ -1,22 +1,21 @@
 import type { Firestore } from "firebase-admin/firestore";
-import { materialStoragePath, PDF_CONTENT_TYPE, type Material, type MaterialPage, type Subject } from "@estudos/shared";
+import type { Material, MaterialPage, Subject } from "@estudos/shared";
+import { summarizePages } from "@estudos/shared/pdf";
 import type { Config } from "../config.js";
-import type { FirebaseServices } from "../firebase.js";
 import { AppError, badRequest, conflict, notFound } from "../http/errors.js";
 import { log } from "../lib/log.js";
 import { nowIso, pageDocId, userPaths } from "../lib/paths.js";
-import { extractPdf, PdfExtractionError } from "../pdf/extract.js";
 import { chunkMaterial, type Chunk } from "../rag/chunker.js";
-
-type Bucket = FirebaseServices["bucket"];
 
 export interface MaterialDeps {
   db: Firestore;
-  bucket: Bucket;
   config: Config;
 }
 
-const STALE_PROCESSING_MS = 5 * 60_000;
+/** Material cujo envio de texto não foi concluído neste prazo é exibido como falha. */
+const STALE_UPLOAD_MS = 15 * 60_000;
+/** Avisos calculados no navegador que o servidor não consegue recalcular (ele só recebe o texto final). */
+const CLIENT_ONLY_WARNING = /corrompido|truncadas|cabeçalho\/rodapé/u;
 
 export function sanitizeFileName(name: string): string {
   const cleaned = name
@@ -41,10 +40,20 @@ async function assertQuota(deps: MaterialDeps, uid: string): Promise<void> {
   }
 }
 
-/** Reserva um "slot" para o upload. As regras do Storage só aceitam o PDF se o slot existir e estiver aguardando. */
-export async function createPdfMaterial(deps: MaterialDeps, uid: string, input: { subjectId: string; topic?: string; fileName: string; sizeBytes: number }) {
+/**
+ * Versão custo zero: o PDF é lido NO NAVEGADOR e nunca sai do aparelho da estudante.
+ * 1) createPdfMaterial registra o material (status "processing" = recebendo texto);
+ * 2) addPages recebe as páginas extraídas em lotes;
+ * 3) finalizePdfMaterial confere se todas chegaram e recalcula o relatório no servidor.
+ */
+export async function createPdfMaterial(
+  deps: MaterialDeps,
+  uid: string,
+  input: { subjectId: string; topic?: string; fileName: string; sizeBytes: number; pageCount: number; warnings: string[] },
+): Promise<Material> {
   if (input.sizeBytes > deps.config.maxPdfBytes) throw badRequest(`O PDF ultrapassa o limite de ${deps.config.MAX_PDF_MB} MB.`, "file_too_large");
   if (!/\.pdf$/iu.test(input.fileName)) throw badRequest("Envie um arquivo com extensão .pdf.");
+  if (input.pageCount > deps.config.MAX_PDF_PAGES) throw badRequest(`O PDF tem ${input.pageCount} páginas; o limite é ${deps.config.MAX_PDF_PAGES}.`, "too_many_pages");
   await assertQuota(deps, uid);
   const subject = await getSubject(deps, uid, input.subjectId);
   const ref = userPaths(deps.db, uid).materials.doc();
@@ -61,15 +70,52 @@ export async function createPdfMaterial(deps: MaterialDeps, uid: string, input: 
     sizeBytes: input.sizeBytes,
     uploadedAt: now,
     updatedAt: now,
-    status: "awaiting_upload",
-    pageCount: 0,
+    status: "processing",
+    pageCount: input.pageCount,
     extraction: null,
     errorMessage: null,
     studied: false,
   };
   const { id: _id, ...data } = material;
-  await ref.set({ ...data, storagePath: materialStoragePath(uid, ref.id), maxBytes: deps.config.maxPdfBytes });
-  return { material, uploadPath: materialStoragePath(uid, ref.id) };
+  const clientWarnings = input.warnings.filter((w) => CLIENT_ONLY_WARNING.test(w)).map((w) => w.slice(0, 300)).slice(0, 10);
+  await ref.set({ ...data, processingStartedAt: now, clientWarnings });
+  return material;
+}
+
+export async function addPages(deps: MaterialDeps, uid: string, id: string, pages: Pick<MaterialPage, "page" | "text" | "hasText" | "layout">[]): Promise<{ received: number }> {
+  const ref = userPaths(deps.db, uid).materials.doc(id);
+  const snap = await ref.get();
+  if (!snap.exists) throw notFound("Material");
+  if (snap.get("kind") !== "pdf" || snap.get("status") !== "processing") throw conflict("Este material não está recebendo texto.", "not_receiving");
+  const pageCount = snap.get("pageCount") as number;
+  const writer = deps.db.bulkWriter();
+  for (const p of pages) {
+    if (p.page < 1 || p.page > pageCount) throw badRequest(`Página ${p.page} fora do intervalo do documento.`);
+    const text = p.hasText ? p.text.replace(/\r\n?/gu, "\n").trim() : "";
+    const hasText = text.length > 0;
+    const page: MaterialPage = { page: p.page, text, charCount: text.length, hasText, layout: hasText ? (p.layout === "empty" ? "single" : p.layout) : "empty", editedByUser: false };
+    void writer.set(userPaths(deps.db, uid).pages(id).doc(pageDocId(p.page)), page);
+  }
+  await writer.close();
+  return { received: pages.length };
+}
+
+export async function finalizePdfMaterial(deps: MaterialDeps, uid: string, id: string): Promise<Material> {
+  const ref = userPaths(deps.db, uid).materials.doc(id);
+  const snap = await ref.get();
+  if (!snap.exists) throw notFound("Material");
+  if (snap.get("status") !== "processing") return getMaterial(deps, uid, id);
+  const pageCount = snap.get("pageCount") as number;
+  const pagesSnap = await userPaths(deps.db, uid).pages(id).select("page", "hasText", "charCount", "layout").get();
+  const pages = pagesSnap.docs.map((d) => d.data() as Pick<MaterialPage, "page" | "hasText" | "charCount" | "layout">).sort((a, b) => a.page - b.page);
+  if (pages.length !== pageCount) {
+    throw conflict(`Foram recebidas ${pages.length} de ${pageCount} páginas. Tente enviar novamente.`, "pages_missing");
+  }
+  const report = summarizePages(pages, { extraWarnings: (snap.get("clientWarnings") as string[] | undefined) ?? [] });
+  await ref.update({ status: report.ocrRequired ? "needs_ocr" : "needs_review", extraction: report, errorMessage: null, updatedAt: nowIso() });
+  invalidateChunks(uid, id);
+  log.info("material_received", { materialId: id, pages: report.pageCount, pagesWithText: report.pagesWithText, ocr: report.ocrRequired });
+  return getMaterial(deps, uid, id);
 }
 
 /** Material de texto colado (anotações), preservando a funcionalidade da versão original. */
@@ -149,8 +195,12 @@ export async function getMaterial(deps: MaterialDeps, uid: string, id: string): 
 }
 
 function toMaterial(id: string, data: Record<string, unknown>): Material {
-  const { storagePath: _sp, maxBytes: _mb, processingStartedAt: _ps, ...rest } = data;
-  return { id, ...(rest as Omit<Material, "id">) };
+  const { processingStartedAt, clientWarnings: _cw, ...rest } = data;
+  const material = { id, ...(rest as Omit<Material, "id">) };
+  if (material.status === "processing" && Date.now() - (Date.parse(String(processingStartedAt ?? "")) || 0) > STALE_UPLOAD_MS) {
+    return { ...material, status: "failed", errorMessage: "O envio do texto foi interrompido. Exclua este material e envie o PDF novamente." };
+  }
+  return material;
 }
 
 export async function getPages(deps: MaterialDeps, uid: string, id: string, from = 1, to = 9999): Promise<MaterialPage[]> {
@@ -205,80 +255,13 @@ export async function updateMaterialMeta(deps: MaterialDeps, uid: string, id: st
   return { ...material, ...(update as Partial<Material>) };
 }
 
-/**
- * Processa o PDF já enviado ao Storage: valida, extrai o texto por página e grava as páginas.
- * Uso de transação para impedir processamento duplicado por cliques repetidos.
- */
-export async function processMaterial(deps: MaterialDeps, uid: string, id: string): Promise<Material> {
-  const ref = userPaths(deps.db, uid).materials.doc(id);
-  await deps.db.runTransaction(async (tx) => {
-    const snap = await tx.get(ref);
-    if (!snap.exists) throw notFound("Material");
-    const status = snap.get("status") as string;
-    const started = Date.parse((snap.get("processingStartedAt") as string | undefined) ?? "") || 0;
-    const stale = status === "processing" && Date.now() - started > STALE_PROCESSING_MS;
-    if (snap.get("kind") !== "pdf") throw conflict("Somente PDFs podem ser processados.");
-    if (status !== "awaiting_upload" && status !== "failed" && !stale) throw conflict("Este material já foi processado ou está em processamento.", "already_processed");
-    tx.update(ref, { status: "processing", processingStartedAt: nowIso(), errorMessage: null });
-  });
-
-  const fail = async (message: string) => {
-    await ref.update({ status: "failed", errorMessage: message, updatedAt: nowIso() });
-    return getMaterial(deps, uid, id);
-  };
-
-  const file = deps.bucket.file(materialStoragePath(uid, id));
-  let bytes: Buffer;
-  try {
-    const [exists] = await file.exists();
-    if (!exists) return await fail("O arquivo não foi encontrado no armazenamento. Envie o PDF novamente.");
-    const [meta] = await file.getMetadata();
-    const size = Number(meta.size ?? 0);
-    if (size > deps.config.maxPdfBytes) {
-      await file.delete({ ignoreNotFound: true });
-      return await fail(`O PDF ultrapassa o limite de ${deps.config.MAX_PDF_MB} MB.`);
-    }
-    if (meta.contentType !== PDF_CONTENT_TYPE) return await fail("O arquivo enviado não é um PDF.");
-    [bytes] = await file.download();
-  } catch (err) {
-    log.error("material_download_failed", { materialId: id, name: (err as Error).name });
-    return fail("Não foi possível ler o arquivo enviado. Tente novamente.");
-  }
-
-  try {
-    const { pages, report } = await extractPdf(bytes, {
-      maxPages: deps.config.MAX_PDF_PAGES,
-      maxCharsPerPage: 100_000,
-      timeoutMs: deps.config.PDF_PROCESS_TIMEOUT_MS,
-    });
-    await deletePages(deps, uid, id);
-    const writer = deps.db.bulkWriter();
-    for (const page of pages) void writer.set(userPaths(deps.db, uid).pages(id).doc(pageDocId(page.page)), page);
-    await writer.close();
-    await ref.update({
-      status: report.ocrRequired ? "needs_ocr" : "needs_review",
-      pageCount: report.pageCount,
-      extraction: report,
-      errorMessage: null,
-      updatedAt: nowIso(),
-    });
-    invalidateChunks(uid, id);
-    log.info("material_processed", { materialId: id, pages: report.pageCount, pagesWithText: report.pagesWithText, ocr: report.ocrRequired });
-    return getMaterial(deps, uid, id);
-  } catch (err) {
-    if (err instanceof PdfExtractionError) return fail(err.message);
-    log.error("material_extract_failed", { materialId: id, name: (err as Error).name });
-    return fail("Falha inesperada ao ler o PDF.");
-  }
-}
-
 async function deletePages(deps: MaterialDeps, uid: string, id: string): Promise<void> {
   await deps.db.recursiveDelete(userPaths(deps.db, uid).pages(id));
 }
 
 /**
  * Exclusão de material — política (docs/MODELO_DE_DADOS.md):
- * - remove o PDF do Storage, as páginas extraídas e os flashcards gerados a partir dele;
+ * - remove as páginas extraídas e os flashcards gerados a partir dele (o PDF original nunca sai do aparelho);
  * - mantém o histórico de simulados e respostas (dados de desempenho), cujas referências
  *   passam a ser exibidas como "material excluído";
  * - remove o id do material das conversas do tutor (as mensagens permanecem).
@@ -286,7 +269,6 @@ async function deletePages(deps: MaterialDeps, uid: string, id: string): Promise
 export async function deleteMaterial(deps: MaterialDeps, uid: string, id: string): Promise<void> {
   await getMaterial(deps, uid, id);
   const paths = userPaths(deps.db, uid);
-  await deps.bucket.file(materialStoragePath(uid, id)).delete({ ignoreNotFound: true });
   await deletePages(deps, uid, id);
   const cards = await paths.flashcards.where("materialId", "==", id).get();
   const writer = deps.db.bulkWriter();
@@ -298,15 +280,6 @@ export async function deleteMaterial(deps: MaterialDeps, uid: string, id: string
   void writer.delete(paths.materials.doc(id));
   await writer.close();
   invalidateChunks(uid, id);
-}
-
-export async function openPdfStream(deps: MaterialDeps, uid: string, id: string) {
-  const material = await getMaterial(deps, uid, id);
-  if (material.kind !== "pdf" || material.status === "awaiting_upload") throw notFound("Arquivo");
-  const file = deps.bucket.file(materialStoragePath(uid, id));
-  const [exists] = await file.exists();
-  if (!exists) throw notFound("Arquivo");
-  return { material, stream: file.createReadStream() };
 }
 
 // ---------- Trechos para busca (derivados das páginas, com cache em memória) ----------

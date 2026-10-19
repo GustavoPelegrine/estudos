@@ -1,4 +1,4 @@
-import type { Limits, Material, Preferences, UsageInfo, UserProfile } from "./types.js";
+import type { Limits, Preferences, UsageInfo, UserProfile } from "./types.js";
 
 /** Formato padrão de erro devolvido pelo backend. */
 export interface ApiErrorBody {
@@ -17,24 +17,22 @@ export interface MeResponse {
   model: string | null;
 }
 
-export interface CreateMaterialRequest {
+/** Registro de um PDF cujo texto foi extraído no navegador (o arquivo em si não é enviado). */
+export interface CreatePdfMaterialRequest {
   subjectId: string;
   topic?: string;
   fileName: string;
   sizeBytes: number;
+  pageCount: number;
+  warnings: string[];
 }
 
-export interface CreateMaterialResponse {
-  material: Material;
-  /** Caminho privado no Firebase Storage onde o PDF deve ser enviado. */
-  uploadPath: string;
+export interface PagesUpload {
+  pages: { page: number; text: string; hasText: boolean; layout: "single" | "columns" | "empty" }[];
 }
+
+/** Lotes pequenos para respeitar o limite de corpo das funções serverless. */
+export const PAGES_BATCH_SIZE = 25;
+export const PAGES_BATCH_MAX_CHARS = 600_000;
 
 export type PreferencesPatch = Partial<Preferences>;
-
-export const PDF_CONTENT_TYPE = "application/pdf";
-export const STORAGE_PDF_NAME = "original.pdf";
-
-export function materialStoragePath(uid: string, materialId: string): string {
-  return `users/${uid}/materials/${materialId}/${STORAGE_PDF_NAME}`;
-}

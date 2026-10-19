@@ -1,41 +1,33 @@
-# Custos, limites gratuitos e fontes de cobrança
+# Custos
 
-> **Não há garantia de custo zero.** Preços e cotas mudam; confira as páginas oficiais de preços do Firebase,
-> do Cloud Run e da Gemini API antes de publicar. Valores abaixo são orientativos.
+A configuração recomendada ([IMPLANTACAO.md](IMPLANTACAO.md)) usa apenas planos **gratuitos e sem cartão**:
+Firebase **Spark**, Vercel **Hobby** e Gemini API **nível gratuito**. Sem cartão cadastrado, não há como haver cobrança:
+se um limite for atingido, o serviço recusa novas operações até o próximo período, em vez de cobrar.
 
-## O que exige faturamento
+> Os limites gratuitos são definidos pelos fornecedores e podem mudar. Confira as páginas oficiais de preços
+> periodicamente. Não há garantia de que os planos gratuitos continuem existindo nas mesmas condições.
 
-| Serviço | Precisa do plano Blaze / conta de faturamento? | Observação |
+## Onde estão os limites e como o app se protege
+
+| Serviço | O que tem limite no plano gratuito | Proteção no app |
 | --- | --- | --- |
-| Firebase Authentication (e-mail/senha) | Não | Cota gratuita ampla para usuários ativos. |
-| Cloud Firestore | Não para começar (cota diária gratuita) | Cobra leituras/escritas/armazenamento acima da cota. |
-| Firebase Storage | **Sim** para projetos novos (o bucket padrão exige Blaze desde 2024) | Há faixa gratuita de armazenamento e transferência no Blaze. |
-| Cloud Run | **Sim** (conta de faturamento) | Faixa gratuita mensal de requisições/CPU/memória. |
-| Firebase Hosting | Não | Cota gratuita de armazenamento e transferência. |
-| Gemini API | Nível gratuito sem faturamento, com limites menores | No nível gratuito o Google pode usar os dados para melhorar produtos; o nível pago não. |
-| Secret Manager | Sim (Blaze) | Poucas versões de segredo ficam na faixa gratuita. |
+| Firestore (Spark) | Leituras, escritas e exclusões por dia; armazenamento total | Só o **texto** dos PDFs é salvo (os arquivos ficam no aparelho); trechos para a busca são calculados em memória; páginas carregadas em lotes. |
+| Authentication (Spark) | Usuários ativos e e-mails enviados | `ALLOWED_EMAILS` restringe quem pode usar. |
+| Vercel (Hobby) | Execuções e tempo de função, transferência de dados; uso apenas pessoal/não comercial | Função única, sem processamento pesado (o PDF é lido no navegador); IA limitada a 55 s por operação. |
+| Gemini (gratuito) | Requisições por minuto e por dia; tokens por minuto | Cota diária por usuário (`AI_DAILY_LIMIT_PER_USER`) e global (`AI_DAILY_LIMIT_GLOBAL`), limite de 6 gerações/minuto, só trechos relevantes são enviados, o tutor não chama a IA quando não há evidência. |
 
-**Alternativa mais econômica** para começar: Hosting + Auth + Firestore no Spark seriam gratuitos, mas Storage e
-Cloud Run exigem Blaze. Com Blaze, um uso individual tende a ficar dentro das faixas gratuitas desses
-serviços; a principal fonte de custo variável é a **Gemini API**.
+Para uma estudante, o uso normal (alguns PDFs por semana, dezenas de questões e perguntas por dia) tende a ficar
+bem abaixo desses limites.
 
-## Fontes de cobrança e como o app as controla
+## Contrapartidas do custo zero
 
-| Fonte | Controle no app |
-| --- | --- |
-| Tokens da Gemini (entrada + saída) | Apenas trechos relevantes (≤ `AI_CONTEXT_MAX_CHARS`, padrão 24 mil caracteres ≈ 6–8 mil tokens); `maxOutputTokens`; cota diária por usuário (`AI_DAILY_LIMIT_PER_USER`, padrão 60) e global (`AI_DAILY_LIMIT_GLOBAL`, 400); rate limit de IA (6/min); tutor não chama a IA sem evidência; tokens registrados por dia em `users/{uid}/usage`. |
-| Leituras do Firestore | Trechos derivados em cache de memória; listas com `limit`; páginas carregadas em lotes de 20. |
-| Armazenamento de PDFs | `MAX_PDF_MB` (20) e `MAX_MATERIALS_PER_USER` (60); exclusão remove arquivos. |
-| CPU do Cloud Run | Escala a zero; `--max-instances` baixo; extração de PDF com timeout e limite de páginas. |
-| Cadastros indesejados consumindo IA | `ALLOWED_EMAILS`, cota por usuário e cota global. |
+* **Privacidade da IA:** no nível gratuito da Gemini o Google pode usar o conteúdo enviado para melhorar os produtos.
+* **PDF original não fica na nuvem:** a comparação texto × PDF em outro aparelho exige abrir o arquivo localmente.
+* **Uso pessoal:** o plano Hobby da Vercel não permite uso comercial (vender acesso, anúncios, clientes).
 
-## Alertas de orçamento (configuração manual — depende de você)
+## Se um dia quiser pagar (opcional)
 
-1. Google Cloud Console → Faturamento → **Orçamentos e alertas** → criar orçamento para o projeto
-   (ex.: R$ 30/mês) com alertas em 50%, 90% e 100%.
-2. Google AI Studio → projeto da chave → definir limites de uso/gasto da Gemini API, se disponíveis.
-3. Opcional: vincular o orçamento a um tópico Pub/Sub para desligar a IA automaticamente
-   (ex.: mudar `AI_PROVIDER=none`) — não implementado nesta versão.
-
-Estimativa grosseira de tokens por operação (com padrões): questões ≈ 7–9 mil tokens de entrada e
-2–5 mil de saída; tutor ≈ 3–4 mil de entrada e até 1 mil de saída. Multiplique pelo preço vigente do modelo.
+* **Claude Haiku 5.5** como IA: US$ 0,10 por milhão de tokens de entrada e US$ 0,50 de saída — cerca de
+  US$ 0,003 por geração de 10 questões. A camada de IA do backend é trocável (`server/src/ai/provider.ts`).
+* **Gemini nível pago:** o conteúdo deixa de ser usado para treino; cobra por token.
+* **Guardar PDFs na nuvem:** exige o plano Blaze do Firebase (Storage); ver a versão do commit `94056a3`.
