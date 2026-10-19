@@ -1,0 +1,6 @@
+# Build da imagem do backend no Cloud Build:
+#   gcloud builds submit --config cloudbuild.yaml --substitutions _IMAGE=southamerica-east1-docker.pkg.dev/SEU_PROJETO/apps/estudos-odonto-api
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-f", "server/Dockerfile", "-t", "${_IMAGE}", "."]
+images: ["${_IMAGE}"]

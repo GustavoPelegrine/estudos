@@ -28,7 +28,7 @@ const schema = z.object({
   AI_DAILY_LIMIT_PER_USER: z.coerce.number().int().positive().default(60),
   AI_DAILY_LIMIT_GLOBAL: z.coerce.number().int().positive().default(400),
   AI_CONTEXT_MAX_CHARS: z.coerce.number().int().positive().default(24_000),
-  RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(60),
+  RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(300),
   AI_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(6),
 
   MAX_PDF_MB: z.coerce.number().positive().max(32).default(20),

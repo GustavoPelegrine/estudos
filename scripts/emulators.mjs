@@ -4,6 +4,7 @@
 // (ex.: regras do Storage que consultam o Firestore) pode ser bloqueada pelo proxy.
 // Uso: node scripts/emulators.mjs exec "<comando>"  |  node scripts/emulators.mjs start
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 
 const env = { ...process.env };
 for (const k of Object.keys(env)) {
@@ -12,6 +13,10 @@ for (const k of Object.keys(env)) {
 const [mode = "start", ...rest] = process.argv.slice(2);
 const args = ["firebase", "emulators:" + mode, "--project", "demo-estudos-odonto"];
 if (mode === "exec") args.push("--only", "auth,firestore,storage", rest.join(" "));
-else args.push("--only", "auth,firestore,storage", "--import=.emulator-data", "--export-on-exit");
+else {
+  // Mantém os dados de desenvolvimento entre execuções.
+  args.push("--only", "auth,firestore,storage", "--export-on-exit=.emulator-data");
+  if (existsSync(".emulator-data")) args.push("--import=.emulator-data");
+}
 const child = spawn("npx", args, { stdio: "inherit", env });
 child.on("exit", (code) => process.exit(code ?? 1));

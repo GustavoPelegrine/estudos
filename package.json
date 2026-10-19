@@ -14,7 +14,7 @@
   },
   "scripts": {
     "dev:emulators": "node scripts/emulators.mjs start",
-    "dev:server": "npm run dev -w server",
+    "dev:server": "node scripts/dev-server.mjs",
     "dev:web": "npm run dev -w web",
     "typecheck": "npm run typecheck -w shared && npm run typecheck -w server && npm run typecheck -w web",
     "build": "npm run build -w server && npm run build -w web",
@@ -28,6 +28,10 @@
     "@firebase/rules-unit-testing": "^6.0.0",
     "firebase": "^13.0.0",
     "firebase-tools": "^15.34.0",
+    "playwright": "^1.64.1",
     "vitest": "^5.0.5"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.6"
   }
 }

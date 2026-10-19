@@ -24,3 +24,4 @@ private/
 server/test/fixtures/generated/
 e2e-output/
 .DS_Store
+!.env.development
