@@ -67,6 +67,11 @@ export interface Material {
   extraction: ExtractionReport | null;
   errorMessage: string | null;
   studied: boolean;
+  /** Versão do texto (1 = envio original; aumenta a cada "Enviar nova versão"). */
+  version?: number;
+  versionUpdatedAt?: ISODate | null;
+  /** true enquanto uma nova versão está sendo recebida (a versão atual continua disponível). */
+  updating?: boolean;
 }
 
 export interface MaterialPage {
@@ -100,6 +105,8 @@ export interface Flashcard {
   topic: string;
   materialId: string | null;
   source: SourceRef | null;
+  /** Versão do material quando o cartão foi criado. */
+  materialVersion?: number;
   createdAt: ISODate;
   /** Sistema de Leitner: caixa 1 (difícil) a 5 (dominado). */
   box: number;

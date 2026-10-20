@@ -7,26 +7,8 @@ import { useToast } from "../components/Toast";
 import { useAction, useApi } from "../hooks/useApi";
 import { api, ApiError } from "../lib/api";
 import { formatBytes, formatDate, STATUS_LABEL } from "../lib/format";
-import { PAGES_BATCH_MAX_CHARS, PAGES_BATCH_SIZE, type MaterialPage } from "@estudos/shared";
 import { extractPdfInBrowser, rememberLocalPdf } from "../lib/pdf";
-
-/** Divide as páginas em lotes pequenos (limite de corpo das funções serverless). */
-function batches(pages: MaterialPage[]): MaterialPage[][] {
-  const out: MaterialPage[][] = [];
-  let cur: MaterialPage[] = [];
-  let chars = 0;
-  for (const p of pages) {
-    if (cur.length && (cur.length >= PAGES_BATCH_SIZE || chars + p.text.length > PAGES_BATCH_MAX_CHARS)) {
-      out.push(cur);
-      cur = [];
-      chars = 0;
-    }
-    cur.push(p);
-    chars += p.text.length;
-  }
-  if (cur.length) out.push(cur);
-  return out;
-}
+import { uploadExtractedPages } from "../lib/pdf-upload";
 
 const SEMESTERS = Array.from({ length: 12 }, (_, i) => i + 1);
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : "Erro inesperado.");
@@ -156,12 +138,7 @@ function UploadPanel({ subjects, onDone }: { subjects: Subject[]; onDone: () => 
           warnings: report.warnings,
         });
         createdId = material.id;
-        const parts = batches(pages);
-        for (const [i, part] of parts.entries()) {
-          await api.uploadPages(material.id, part.map(({ page, text, hasText, layout }) => ({ page, text, hasText, layout })));
-          setProgress((i + 1) / parts.length);
-        }
-        const { material: saved } = await api.finalizeMaterial(material.id);
+        const saved = await uploadExtractedPages(material.id, pages, setProgress);
         createdId = null;
         rememberLocalPdf(saved.id, file);
         await onDone();
@@ -274,6 +251,8 @@ function MaterialRow({ m, onDelete, busy }: { m: Material; onDelete: (m: Materia
           <span className={`pill ${st.tone}`}>{st.text}</span>
           {m.studied && <span className="pill good">Estudado ✓</span>}
           {m.kind === "notes" && <span className="pill">Anotações</span>}
+          {(m.version ?? 1) > 1 && <span className="pill info">versão {m.version}</span>}
+          {m.updating && <span className="pill info">recebendo nova versão…</span>}
         </div>
       </div>
       <div className="actions">

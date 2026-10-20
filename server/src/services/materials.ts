@@ -1,4 +1,4 @@
-import type { Firestore } from "firebase-admin/firestore";
+import { FieldValue, type Firestore } from "firebase-admin/firestore";
 import type { Material, MaterialPage, Subject } from "@estudos/shared";
 import { summarizePages } from "@estudos/shared/pdf";
 import type { Config } from "../config.js";
@@ -82,19 +82,58 @@ export async function createPdfMaterial(
   return material;
 }
 
+interface Replacing {
+  fileName: string;
+  sizeBytes: number;
+  pageCount: number;
+  clientWarnings: string[];
+  startedAt: string;
+}
+
+const isActive = (r: Replacing | undefined): r is Replacing => Boolean(r) && Date.now() - (Date.parse((r as Replacing).startedAt) || 0) <= STALE_UPLOAD_MS;
+const clientOnly = (warnings: string[]) => warnings.filter((w) => CLIENT_ONLY_WARNING.test(w)).map((w) => w.slice(0, 300)).slice(0, 10);
+
+/**
+ * "Enviar nova versão" de um PDF já cadastrado. O texto novo vai para uma área temporária;
+ * a versão atual continua disponível (inclusive para a IA) até a finalização, que substitui
+ * as páginas de uma vez. Se o envio for interrompido, nada da versão atual é perdido.
+ */
+export async function startNewVersion(
+  deps: MaterialDeps,
+  uid: string,
+  id: string,
+  input: { fileName: string; sizeBytes: number; pageCount: number; warnings: string[] },
+): Promise<Material> {
+  const ref = userPaths(deps.db, uid).materials.doc(id);
+  const snap = await ref.get();
+  if (!snap.exists) throw notFound("Material");
+  if (snap.get("kind") !== "pdf") throw conflict("Somente materiais em PDF podem receber nova versão.", "not_pdf");
+  if (snap.get("status") === "processing") throw conflict("O envio original deste material ainda não terminou.", "still_processing");
+  if (input.sizeBytes > deps.config.maxPdfBytes) throw badRequest(`O PDF ultrapassa o limite de ${deps.config.MAX_PDF_MB} MB.`, "file_too_large");
+  if (!/\.pdf$/iu.test(input.fileName)) throw badRequest("Envie um arquivo com extensão .pdf.");
+  if (input.pageCount > deps.config.MAX_PDF_PAGES) throw badRequest(`O PDF tem ${input.pageCount} páginas; o limite é ${deps.config.MAX_PDF_PAGES}.`, "too_many_pages");
+  await deps.db.recursiveDelete(userPaths(deps.db, uid).incoming(id)); // sobras de um envio interrompido
+  const replacing: Replacing = { fileName: sanitizeFileName(input.fileName), sizeBytes: input.sizeBytes, pageCount: input.pageCount, clientWarnings: clientOnly(input.warnings), startedAt: nowIso() };
+  await ref.update({ replacing });
+  return getMaterial(deps, uid, id);
+}
+
 export async function addPages(deps: MaterialDeps, uid: string, id: string, pages: Pick<MaterialPage, "page" | "text" | "hasText" | "layout">[]): Promise<{ received: number }> {
   const ref = userPaths(deps.db, uid).materials.doc(id);
   const snap = await ref.get();
   if (!snap.exists) throw notFound("Material");
-  if (snap.get("kind") !== "pdf" || snap.get("status") !== "processing") throw conflict("Este material não está recebendo texto.", "not_receiving");
-  const pageCount = snap.get("pageCount") as number;
+  const replacing = snap.get("replacing") as Replacing | undefined;
+  const receivingVersion = isActive(replacing);
+  if (snap.get("kind") !== "pdf" || (!receivingVersion && snap.get("status") !== "processing")) throw conflict("Este material não está recebendo texto.", "not_receiving");
+  const pageCount = receivingVersion ? replacing.pageCount : (snap.get("pageCount") as number);
+  const target = receivingVersion ? userPaths(deps.db, uid).incoming(id) : userPaths(deps.db, uid).pages(id);
   const writer = deps.db.bulkWriter();
   for (const p of pages) {
     if (p.page < 1 || p.page > pageCount) throw badRequest(`Página ${p.page} fora do intervalo do documento.`);
     const text = p.hasText ? p.text.replace(/\r\n?/gu, "\n").trim() : "";
     const hasText = text.length > 0;
     const page: MaterialPage = { page: p.page, text, charCount: text.length, hasText, layout: hasText ? (p.layout === "empty" ? "single" : p.layout) : "empty", editedByUser: false };
-    void writer.set(userPaths(deps.db, uid).pages(id).doc(pageDocId(p.page)), page);
+    void writer.set(target.doc(pageDocId(p.page)), page);
   }
   await writer.close();
   return { received: pages.length };
@@ -104,6 +143,8 @@ export async function finalizePdfMaterial(deps: MaterialDeps, uid: string, id: s
   const ref = userPaths(deps.db, uid).materials.doc(id);
   const snap = await ref.get();
   if (!snap.exists) throw notFound("Material");
+  const replacing = snap.get("replacing") as Replacing | undefined;
+  if (isActive(replacing)) return finalizeNewVersion(deps, uid, id, replacing, (snap.get("version") as number | undefined) ?? 1);
   if (snap.get("status") !== "processing") return getMaterial(deps, uid, id);
   const pageCount = snap.get("pageCount") as number;
   const pagesSnap = await userPaths(deps.db, uid).pages(id).select("page", "hasText", "charCount", "layout").get();
@@ -115,6 +156,40 @@ export async function finalizePdfMaterial(deps: MaterialDeps, uid: string, id: s
   await ref.update({ status: report.ocrRequired ? "needs_ocr" : "needs_review", extraction: report, errorMessage: null, updatedAt: nowIso() });
   invalidateChunks(uid, id);
   log.info("material_received", { materialId: id, pages: report.pageCount, pagesWithText: report.pagesWithText, ocr: report.ocrRequired });
+  return getMaterial(deps, uid, id);
+}
+
+async function finalizeNewVersion(deps: MaterialDeps, uid: string, id: string, replacing: Replacing, version: number): Promise<Material> {
+  const paths = userPaths(deps.db, uid);
+  const incoming = await paths.incoming(id).get();
+  const newPages = incoming.docs.map((d) => d.data() as MaterialPage).sort((a, b) => a.page - b.page);
+  if (newPages.length !== replacing.pageCount) {
+    throw conflict(`Foram recebidas ${newPages.length} de ${replacing.pageCount} páginas. Tente enviar novamente.`, "pages_missing");
+  }
+  const report = summarizePages(newPages, { extraWarnings: replacing.clientWarnings });
+  // Substitui por sobrescrita (sem momento com o material vazio) e remove páginas que deixaram de existir.
+  const oldPages = await paths.pages(id).select().get();
+  const writer = deps.db.bulkWriter();
+  for (const page of newPages) void writer.set(paths.pages(id).doc(pageDocId(page.page)), page);
+  for (const d of oldPages.docs) if (Number(d.id) > replacing.pageCount) void writer.delete(d.ref);
+  await writer.close();
+  const now = nowIso();
+  await paths.materials.doc(id).update({
+    fileName: replacing.fileName,
+    sizeBytes: replacing.sizeBytes,
+    pageCount: replacing.pageCount,
+    extraction: report,
+    status: report.ocrRequired ? "needs_ocr" : "needs_review",
+    errorMessage: null,
+    studied: false,
+    version: version + 1,
+    versionUpdatedAt: now,
+    updatedAt: now,
+    replacing: FieldValue.delete(),
+  });
+  await deps.db.recursiveDelete(paths.incoming(id));
+  invalidateChunks(uid, id);
+  log.info("material_new_version", { materialId: id, version: version + 1, pages: report.pageCount });
   return getMaterial(deps, uid, id);
 }
 
@@ -195,8 +270,8 @@ export async function getMaterial(deps: MaterialDeps, uid: string, id: string): 
 }
 
 function toMaterial(id: string, data: Record<string, unknown>): Material {
-  const { processingStartedAt, clientWarnings: _cw, ...rest } = data;
-  const material = { id, ...(rest as Omit<Material, "id">) };
+  const { processingStartedAt, clientWarnings: _cw, replacing, ...rest } = data;
+  const material: Material = { id, version: 1, ...(rest as Omit<Material, "id">), updating: isActive(replacing as Replacing | undefined) };
   if (material.status === "processing" && Date.now() - (Date.parse(String(processingStartedAt ?? "")) || 0) > STALE_UPLOAD_MS) {
     return { ...material, status: "failed", errorMessage: "O envio do texto foi interrompido. Exclua este material e envie o PDF novamente." };
   }
@@ -270,6 +345,7 @@ export async function deleteMaterial(deps: MaterialDeps, uid: string, id: string
   await getMaterial(deps, uid, id);
   const paths = userPaths(deps.db, uid);
   await deletePages(deps, uid, id);
+  await deps.db.recursiveDelete(paths.incoming(id));
   const cards = await paths.flashcards.where("materialId", "==", id).get();
   const writer = deps.db.bulkWriter();
   for (const d of cards.docs) void writer.delete(d.ref);

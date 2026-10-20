@@ -7,8 +7,9 @@ Todo dado privado fica sob `users/{uid}`, onde `uid` é o do Firebase Authentica
 | --- | --- | --- |
 | `users/{uid}` | e-mail, nome, `createdAt`, `preferences` (tema, semestre, nº de questões) | sim (dono) |
 | `users/{uid}/subjects/{id}` | disciplina: `name`, `semester` | sim |
-| `users/{uid}/materials/{id}` | `ownerUid`, `kind` (pdf/notes), `subjectId`, `subjectName`, `semester`, `topic`, `fileName`, `sizeBytes`, `uploadedAt`, `status`, `pageCount`, `extraction` (relatório calculado no servidor), `errorMessage`, `studied` | sim |
+| `users/{uid}/materials/{id}` | `ownerUid`, `kind` (pdf/notes), `subjectId`, `subjectName`, `semester`, `topic`, `fileName`, `sizeBytes`, `uploadedAt`, `status`, `pageCount`, `extraction` (relatório calculado no servidor), `errorMessage`, `studied`, `version`, `versionUpdatedAt`, `replacing` (envio de nova versão em andamento) | sim |
 | `users/{uid}/materials/{id}/pages/{0001}` | `page`, `text` (normalizado), `charCount`, `hasText`, `layout`, `editedByUser` | sim |
+| `users/{uid}/materials/{id}/incoming/{0001}` | área temporária de uma **nova versão** do PDF; substitui `pages` só quando o envio termina | **não** |
 | `users/{uid}/flashcards/{id}` | `front`, `back`, `subjectName`, `topic`, `materialId`, `source` (arquivo/página/trecho), caixa de Leitner `box`, `dueAt`, contadores | sim |
 | `users/{uid}/flashcardReviews/{clientReviewId}` | histórico de revisões (idempotente por id do clique) | sim |
 | `users/{uid}/quizzes/{id}` | simulado/prática: `mode`, `title`, `materialIds`, `status`, contadores, `model`, `questions[]` **sem gabarito** | sim |
@@ -38,6 +39,7 @@ Todas as escritas são feitas pelo backend (Admin SDK). As regras negam qualquer
 | Ação | Efeito |
 | --- | --- |
 | Excluir material | Remove as páginas (texto) e os flashcards gerados dele (o PDF original nunca é enviado); remove o id das conversas. **Mantém** simulados/respostas e estatísticas (histórico de desempenho) — as referências passam a exibir “material excluído”. |
+| Enviar nova versão do PDF | Mesmo material (id, disciplina, tema); o texto novo fica em `incoming` e substitui `pages` na finalização, por sobrescrita. Envio interrompido não altera a versão atual. A nova versão volta para *conferir texto* e `studied` volta a falso. Flashcards e simulados antigos são mantidos (flashcards guardam `materialVersion` e aparecem como "versão anterior"). |
 | Excluir simulado | Remove simulado, gabarito e respostas; estatísticas agregadas permanecem. |
 | Excluir conversa | Remove a conversa e suas mensagens. |
 | Excluir disciplina | Bloqueado enquanto houver materiais vinculados. |

@@ -22,6 +22,7 @@ export async function generateFlashcards(deps: MaterialDeps & { ai: AiService },
   const context = selectForGeneration(chunks, input.focus, Math.min(deps.config.AI_CONTEXT_MAX_CHARS, 18_000));
   const result = await deps.ai.generateFlashcards(uid, context, { count: input.count, focus: input.focus });
   const topicByMaterial = new Map(materials.map((m) => [m.id, m.topic]));
+  const versionByMaterial = new Map(materials.map((m) => [m.id, m.version ?? 1]));
   const now = nowIso();
   const batch = deps.db.batch();
   const cards: Flashcard[] = result.cards.map((c) => {
@@ -34,6 +35,7 @@ export async function generateFlashcards(deps: MaterialDeps & { ai: AiService },
       topic: c.topic || topicByMaterial.get(c.materialId) || "",
       materialId: c.materialId,
       source: c.source,
+      materialVersion: versionByMaterial.get(c.materialId) ?? 1,
       createdAt: now,
       box: 1,
       dueAt: now,

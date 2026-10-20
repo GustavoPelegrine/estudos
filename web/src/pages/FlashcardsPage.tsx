@@ -37,6 +37,9 @@ export function FlashcardsPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [filter, setFilter] = useState<string>("");
 
+  const versionOf = useMemo(() => new Map((data.data?.materials ?? []).map((m) => [m.id, m.version ?? 1])), [data.data]);
+  /** Cartão criado a partir de uma versão anterior do material (o PDF foi atualizado depois). */
+  const fromOldVersion = (c: Flashcard) => Boolean(c.materialId) && (c.materialVersion ?? 1) < (versionOf.get(c.materialId as string) ?? 1);
   const cards = useMemo(() => (data.data?.cards ?? []).filter((c) => !filter || c.materialId === filter), [data.data, filter]);
   const now = new Date().toISOString();
   const due = cards.filter((c) => c.dueAt <= now);
@@ -194,6 +197,7 @@ export function FlashcardsPage() {
                   <div className="subject-info">
                     <strong>{c.front}</strong>
                     <small>Nível {c.box}/5 · {c.knownCount} acerto(s) · {c.reviewCount} revisão(ões){c.source ? ` · ${c.source.fileName} p. ${c.source.page}` : ""}</small>
+                    {fromOldVersion(c) && <div><span className="pill warn" title="O PDF foi atualizado depois que este cartão foi criado. Confira se ele ainda vale.">versão anterior do material</span></div>}
                   </div>
                   <div className="actions">
                     <button className="btn sm" onClick={() => setSession(startSession([c]))}>Estudar</button>

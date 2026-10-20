@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import type { MaterialPage } from "@estudos/shared";
 import { ErrorState, Loading } from "../components/States";
 import { useToast } from "../components/Toast";
 import { useAction, useApi } from "../hooks/useApi";
 import { api } from "../lib/api";
-import { localPdfFor, rememberLocalPdf } from "../lib/pdf";
+import { extractPdfInBrowser, localPdfFor, rememberLocalPdf } from "../lib/pdf";
+import { uploadExtractedPages } from "../lib/pdf-upload";
+import { useAuth } from "../auth/AuthProvider";
 import { formatBytes, formatDateTime, STATUS_LABEL } from "../lib/format";
 import { PageText } from "./ContentPage";
 
@@ -22,6 +24,10 @@ export function MaterialDetailPage() {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [versionStage, setVersionStage] = useState<string | null>(null);
+  const [versionProgress, setVersionProgress] = useState(0);
+  const versionInput = useRef<HTMLInputElement>(null);
+  const { me } = useAuth();
   const m = material.data;
 
   // Carrega as páginas em lotes conforme a navegação.
@@ -91,6 +97,52 @@ export function MaterialDetailPage() {
       material.setData(updated);
     });
 
+  /**
+   * Nova versão do PDF: lê o arquivo no aparelho, envia o texto para uma área temporária e só então
+   * substitui a versão atual. Se algo falhar no meio, a versão atual continua intacta.
+   */
+  const sendNewVersion = (file: File | null) => {
+    if (versionInput.current) versionInput.current.value = "";
+    if (!file) return;
+    const maxBytes = me?.limits.maxPdfBytes ?? 20 * 1024 * 1024;
+    if (file.size > maxBytes) return toast(`O PDF tem ${formatBytes(file.size)}; o limite é ${formatBytes(maxBytes)}.`, "error");
+    if (
+      !confirm(
+        `Substituir o texto de “${m.fileName}” pelo de “${file.name}”?\n\nO material continua na mesma disciplina. Você vai conferir e liberar o texto novo antes de a IA usá-lo. Flashcards e simulados já feitos são mantidos.`,
+      )
+    )
+      return;
+    void run(async () => {
+      try {
+        setVersionStage("Lendo a nova versão neste dispositivo…");
+        const { pages: newPages, report } = await extractPdfInBrowser(file, {
+          maxPages: me?.limits.maxPdfPages ?? 400,
+          onProgress: (page, total) => {
+            setVersionStage(`Lendo a página ${page} de ${total} neste dispositivo…`);
+            setVersionProgress(page / total);
+          },
+        });
+        setVersionStage("Salvando a nova versão…");
+        setVersionProgress(0);
+        await api.startNewVersion(m.id, { fileName: file.name, sizeBytes: file.size, pageCount: report.pageCount, warnings: report.warnings });
+        const updated = await uploadExtractedPages(m.id, newPages, setVersionProgress);
+        rememberLocalPdf(m.id, file);
+        if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+        setPdfUrl(URL.createObjectURL(file));
+        setPages([]);
+        setCurrent(1);
+        setEditing(false);
+        material.setData(updated);
+        toast(`Versão ${updated.version ?? 2} salva. Confira o texto e libere para estudo.`);
+      } catch (err) {
+        toast(`${(err as Error).message} A versão anterior continua disponível.`, "error");
+      } finally {
+        setVersionStage(null);
+        setVersionProgress(0);
+      }
+    });
+  };
+
   const remove = () => {
     if (!confirm(`Excluir “${m.fileName}”? O texto extraído e os flashcards derivados serão apagados (o PDF continua só no seu aparelho).`)) return;
     void run(async () => {
@@ -109,14 +161,29 @@ export function MaterialDetailPage() {
           <p>
             {m.subjectName} · {m.semester}º semestre{m.topic ? ` · ${m.topic}` : ""} · enviado em {formatDateTime(m.uploadedAt)}
             {m.kind === "pdf" ? ` · ${formatBytes(m.sizeBytes)}` : ""}
+            {(m.version ?? 1) > 1 ? ` · versão ${m.version}, atualizada em ${formatDateTime(m.versionUpdatedAt)}` : ""}
           </p>
         </div>
         <div className="row">
           <span className={`pill ${st.tone}`}>{st.text}</span>
+          {m.kind === "pdf" && m.status !== "processing" && (
+            <label className={`btn ${busy ? "disabled" : ""}`} style={{ cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.5 : 1 }}>
+              Enviar nova versão
+              <input ref={versionInput} type="file" accept="application/pdf,.pdf" className="sr-only" disabled={busy} onChange={(e) => sendNewVersion(e.target.files?.[0] ?? null)} />
+            </label>
+          )}
           <button className="btn" onClick={() => void toggleStudied()} disabled={busy}>{m.studied ? "Estudado ✓" : "Marcar como estudado"}</button>
           <button className="btn danger" onClick={remove} disabled={busy}>Excluir</button>
         </div>
       </div>
+
+      {versionStage && (
+        <div className="notice upload-progress" role="status">
+          <span className="small"><span className="spinner" aria-hidden="true" /> {versionStage}</span>
+          <div className="progress"><span style={{ width: `${Math.round(versionProgress * 100)}%` }} /></div>
+        </div>
+      )}
+      {m.updating && !versionStage && <div className="notice">Uma nova versão está sendo enviada. Enquanto isso, a versão atual continua disponível.</div>}
 
       {m.status === "failed" && (
         <div className="notice bad stack" role="alert">

@@ -50,6 +50,8 @@ const email = `estudante.${Date.now()}@example.com`;
 const password = "senha-forte-123";
 
 const { ctx, page } = await newPage({ width: 1366, height: 860 });
+// Confirmações (finalizar simulado, nova versão…) são aceitas automaticamente.
+page.on("dialog", (d) => void d.accept());
 try {
   await step("redireciona para login quando não autenticada", async () => {
     await page.goto(BASE + "/");
@@ -166,7 +168,6 @@ try {
       await page.waitForTimeout(300);
     }
     if ((await page.locator(".choice.correct").count()) !== 0) throw new Error("gabarito revelado antes de finalizar");
-    page.once("dialog", (d) => d.accept());
     await page.getByRole("button", { name: "Finalizar simulado" }).click();
     await page.getByRole("heading", { name: "Gabarito comentado" }).waitFor();
   });
@@ -223,6 +224,20 @@ try {
     await shot(page, "14-tema-claro");
     await page.getByRole("button", { name: "Alternar tema claro/escuro" }).click();
     await page.waitForFunction(() => document.documentElement.dataset.theme === "dark");
+  });
+
+  await step("envia nova versão de um PDF no mesmo material", async () => {
+    await page.getByRole("link", { name: /Meu material/ }).first().click();
+    await page.locator(".subject", { hasText: "duas-colunas.pdf" }).getByRole("link").click();
+    await page.getByText("Qualidade da extração").waitFor();
+    await page.locator("label", { hasText: "Enviar nova versão" }).locator("input[type=file]").setInputFiles(join(FIXTURES, "texto-simples.pdf"));
+    await page.getByText(/versão 2, atualizada em/).waitFor({ timeout: 30000 });
+    await page.getByRole("heading", { name: "texto-simples.pdf" }).waitFor();
+    await page.getByRole("button", { name: /Texto conferido/ }).waitFor();
+    await shot(page, "18-nova-versao");
+    await page.getByRole("link", { name: "← Meu material" }).click();
+    await page.locator(".pill", { hasText: "versão 2" }).waitFor();
+    await page.getByRole("link", { name: /Visão geral/ }).click();
   });
 
   await step("sessão persiste após recarregar", async () => {

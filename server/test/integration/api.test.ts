@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PAGES_BATCH_SIZE } from "@estudos/shared";
 import { extractPdf } from "../../src/pdf/extract.js";
-import { makeInjectionPdf, makeScannedPdf, makeTextPdf } from "../fixtures/pdfs.js";
+import { makeInjectionPdf, makeScannedPdf, makeTextPdf, makeTwoColumnPdf } from "../fixtures/pdfs.js";
 import { clearEmulators, client, signInAnonymously, signUp, startServer, type TestServer } from "./helpers.js";
 
 let server: TestServer;
@@ -162,6 +162,78 @@ describe("materiais: texto extraído no navegador, revisão", () => {
     expect(r.body).toMatchObject({ imported: 1 });
     const subjects = await alice.get("/subjects");
     expect(subjects.body.subjects.some((s: { name: string }) => s.name === "Anatomia")).toBe(true);
+  });
+});
+
+describe("nova versão de um PDF", () => {
+  async function sendVersion(api: ReturnType<typeof client>, id: string, bytes: Uint8Array, fileName: string, finalize = true) {
+    const { pages, report } = await extractPdf(bytes, { maxPages: 400, maxCharsPerPage: 100_000, timeoutMs: 20_000 });
+    const started = await api.post(`/materials/${id}/new-version`, { fileName, sizeBytes: bytes.length, pageCount: report.pageCount, warnings: report.warnings });
+    if (started.status !== 200) return { started };
+    for (let i = 0; i < pages.length; i += PAGES_BATCH_SIZE) {
+      const part = pages.slice(i, i + PAGES_BATCH_SIZE).map(({ page, text, hasText, layout }) => ({ page, text, hasText, layout }));
+      await api.post(`/materials/${id}/pages`, { pages: part });
+    }
+    return { started, finalized: finalize ? await api.post(`/materials/${id}/finalize`) : undefined };
+  }
+
+  it("substitui o texto mantendo o mesmo material, exige nova conferência e preserva flashcards", async () => {
+    const id = await readyMaterial();
+    await alice.patch(`/materials/${id}`, { studied: true });
+    const cards = (await alice.post("/flashcards/generate", { materialIds: [id], count: 2 })).body.cards;
+    expect(cards[0].materialVersion).toBe(1);
+    const { finalized } = await sendVersion(alice, id, await makeTwoColumnPdf(), "histologia-v2.pdf");
+    const m = finalized!.body.material;
+    expect(m.id).toBe(id);
+    expect(m.version).toBe(2);
+    expect(m.fileName).toBe("histologia-v2.pdf");
+    expect(m.pageCount).toBe(1);
+    expect(m.status).toBe("needs_review");
+    expect(m.studied).toBe(false);
+    expect(m.subjectId).toBe(subjectId);
+    // Páginas antigas que não existem mais foram removidas; a página 1 tem o texto novo
+    const pages = (await alice.get(`/materials/${id}/pages?from=1&to=10`)).body.pages;
+    expect(pages).toHaveLength(1);
+    expect(pages[0].text).toContain("Periodontia");
+    // Antes de liberar a nova versão, a IA não usa o material
+    expect((await alice.post("/quizzes", { mode: "practice", materialIds: [id], count: 2, difficulty: "media" })).status).toBe(409);
+    expect((await alice.post(`/materials/${id}/approve`)).body.material.status).toBe("ready");
+    // Flashcards antigos continuam, marcados com a versão em que foram criados
+    const after = (await alice.get(`/flashcards?materialId=${id}`)).body.flashcards;
+    expect(after.map((c: { id: string }) => c.id).sort()).toEqual(cards.map((c: { id: string }) => c.id).sort());
+    expect(after.every((c: { materialVersion: number }) => c.materialVersion === 1)).toBe(true);
+    // A busca do tutor já usa o texto novo
+    const conv = (await alice.post("/conversations", { materialIds: [id] })).body.conversation;
+    const r = await alice.post(`/conversations/${conv.id}/messages`, { text: "O que é a gengiva inserida?" });
+    expect(r.body.assistant.citations[0]?.fileName).toBe("histologia-v2.pdf");
+  });
+
+  it("envio interrompido não afeta a versão atual, que continua utilizável", async () => {
+    const id = await readyMaterial();
+    const before = (await alice.get(`/materials/${id}/pages?from=1&to=10`)).body.pages;
+    const { started } = await sendVersion(alice, id, await makeTwoColumnPdf(), "interrompido.pdf", false);
+    expect(started.body.material.updating).toBe(true);
+    // Durante o envio: mesmo texto, mesmo status, e a IA continua podendo usar
+    const during = await alice.get(`/materials/${id}`);
+    expect(during.body.material.status).toBe("ready");
+    expect(during.body.material.fileName).toBe("histologia.pdf");
+    expect((await alice.get(`/materials/${id}/pages?from=1&to=10`)).body.pages).toEqual(before);
+    expect((await alice.post("/flashcards/generate", { materialIds: [id], count: 1 })).status).toBe(200);
+    // Um envio incompleto é recusado na finalização sem tocar na versão atual
+    const partial = await alice.post(`/materials/${id}/new-version`, { fileName: "parcial.pdf", sizeBytes: 10, pageCount: 3, warnings: [] });
+    expect(partial.status).toBe(200);
+    await alice.post(`/materials/${id}/pages`, { pages: [{ page: 1, text: "Só a primeira página chegou ao servidor.", hasText: true, layout: "single" }] });
+    expect((await alice.post(`/materials/${id}/finalize`)).body.error.code).toBe("pages_missing");
+    expect((await alice.get(`/materials/${id}/pages?from=1&to=10`)).body.pages).toEqual(before);
+    expect((await alice.get(`/materials/${id}`)).body.material.version).toBe(1);
+  });
+
+  it("só PDFs aceitam nova versão, e só pelo dono", async () => {
+    const notes = (await alice.post("/materials/notes", { subjectId, title: "Resumo", text: "O esmalte dentário é acelular e não se regenera após a erupção." })).body.material;
+    expect((await alice.post(`/materials/${notes.id}/new-version`, { fileName: "a.pdf", sizeBytes: 10, pageCount: 1 })).status).toBe(409);
+    const id = await readyMaterial();
+    expect((await bob.post(`/materials/${id}/new-version`, { fileName: "a.pdf", sizeBytes: 10, pageCount: 1 })).status).toBe(404);
+    expect((await alice.post(`/materials/${id}/new-version`, { fileName: "a.exe", sizeBytes: 10, pageCount: 1 })).status).toBe(400);
   });
 });
 

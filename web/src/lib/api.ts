@@ -78,6 +78,7 @@ export const api = {
   material: (id: string) => request<{ material: Material }>("GET", `/materials/${id}`),
   createPdfMaterial: (b: CreatePdfMaterialRequest) => request<{ material: Material }>("POST", "/materials", b),
   uploadPages: (id: string, pages: PagesUpload["pages"]) => request<{ received: number }>("POST", `/materials/${id}/pages`, { pages }),
+  startNewVersion: (id: string, b: Omit<CreatePdfMaterialRequest, "subjectId" | "topic">) => request<{ material: Material }>("POST", `/materials/${id}/new-version`, b),
   finalizeMaterial: (id: string) => request<{ material: Material }>("POST", `/materials/${id}/finalize`),
   createNotes: (b: { subjectId: string; topic?: string; title: string; text: string }) => request<{ material: Material }>("POST", "/materials/notes", b),
   approveMaterial: (id: string) => request<{ material: Material }>("POST", `/materials/${id}/approve`),

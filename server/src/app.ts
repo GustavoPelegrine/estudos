@@ -187,6 +187,18 @@ export function createApp(deps: AppDeps) {
       return materials.addPages(ctx, currentUser(req).uid, parse(docId, req.params.id), body.pages);
     }),
   );
+  api.post(
+    "/materials/:id/new-version",
+    h(async (req) => {
+      const body = parse(
+        z
+          .object({ fileName: shortText(200).min(1), sizeBytes: z.number().int().positive(), pageCount: z.number().int().min(1).max(5000), warnings: z.array(z.string().max(500)).max(20).default([]) })
+          .strict(),
+        req.body,
+      );
+      return { material: await materials.startNewVersion(ctx, currentUser(req).uid, parse(docId, req.params.id), body) };
+    }),
+  );
   api.post("/materials/:id/finalize", h(async (req) => ({ material: await materials.finalizePdfMaterial(ctx, currentUser(req).uid, parse(docId, req.params.id)) })));
   api.post(
     "/materials/notes",

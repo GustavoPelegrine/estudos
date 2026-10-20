@@ -11,6 +11,8 @@ export function userPaths(db: Firestore, uid: string) {
     subjects: user.collection("subjects"),
     materials: user.collection("materials"),
     pages: (materialId: string) => user.collection("materials").doc(materialId).collection("pages"),
+    /** Área temporária de uma nova versão: só substitui "pages" quando o envio termina. */
+    incoming: (materialId: string) => user.collection("materials").doc(materialId).collection("incoming"),
     flashcards: user.collection("flashcards"),
     flashcardReviews: user.collection("flashcardReviews"),
     quizzes: user.collection("quizzes"),
