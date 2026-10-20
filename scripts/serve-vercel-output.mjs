@@ -31,6 +31,10 @@ createServer((req, res) => {
     return handler(req, res);
   }
   let file = join(out, "static", path);
+  if (path.startsWith("/assets/") && !existsSync(file)) {
+    res.statusCode = 404;
+    return res.end("not found");
+  }
   if (!file.startsWith(join(out, "static")) || !existsSync(file) || statSync(file).isDirectory()) file = join(out, "static/index.html");
   res.setHeader("Content-Type", types[extname(file)] ?? "application/octet-stream");
   createReadStream(file).pipe(res);

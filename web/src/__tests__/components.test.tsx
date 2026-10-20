@@ -8,6 +8,7 @@ import { MaterialPicker } from "../components/MaterialPicker";
 import { PageText } from "../pages/ContentPage";
 import { useAction } from "../hooks/useApi";
 import { authErrorMessage } from "../lib/auth-errors";
+import { isStaleChunkError } from "../lib/stale-build";
 
 const material = (id: string, status: Material["status"] = "ready"): Material => ({
   id,
@@ -85,5 +86,14 @@ describe("mensagens de autenticação", () => {
     expect(authErrorMessage({ code: "auth/user-not-found" })).toBe(authErrorMessage({ code: "auth/wrong-password" }));
     expect(authErrorMessage({ code: "auth/email-already-in-use" })).toMatch(/Já existe/);
     expect(authErrorMessage({ code: "desconhecido" })).toMatch(/Tente novamente/);
+  });
+});
+
+describe("arquivos de uma publicação anterior", () => {
+  it("reconhece a falha de módulo sob demanda nos principais navegadores", () => {
+    expect(isStaleChunkError(new TypeError("Failed to fetch dynamically imported module: https://x.vercel.app/assets/pdf-BGkgVvrr.js"))).toBe(true);
+    expect(isStaleChunkError(new TypeError("Importing a module script failed."))).toBe(true);
+    expect(isStaleChunkError(new Error("error loading dynamically imported module"))).toBe(true);
+    expect(isStaleChunkError(new Error("O PDF está protegido por senha."))).toBe(false);
   });
 });

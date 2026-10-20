@@ -86,6 +86,8 @@ A cada novo commit na branch `main`, a Vercel publica automaticamente uma nova v
 | "Esta conta ainda não tem acesso à plataforma" | O e-mail não está em `ALLOWED_EMAILS` (ou há espaço/maiúscula diferente). |
 | Login falha com erro de domínio | Passo 4 (domínio autorizado) não foi feito. |
 | "Erro interno" ao abrir o painel | `FIREBASE_SERVICE_ACCOUNT` incompleta ou de outro projeto; veja *Vercel → Logs*. |
+| "A IA demorou demais para responder" | Rede lenta ou modelo sobrecarregado. Tente com menos questões; se persistir, confira `GEMINI_THINKING_LEVEL` (padrão `low`, o mais rápido). |
+| "O site foi atualizado. Recarregue a página" | A aba estava aberta durante uma nova publicação; aperte Ctrl+F5. |
 | "Limite de uso da Gemini API atingido" | Limite por minuto/dia do nível gratuito; aguarde alguns minutos ou até o dia seguinte. |
 | Site em branco | Variáveis `VITE_*` ausentes no momento do build; cadastre e faça *Redeploy*. |
 

@@ -5,7 +5,13 @@ import type { Config } from "./config.js";
 
 export function createAiProvider(config: Config): AiProvider | null {
   if (config.aiProvider === "gemini") {
-    return new GeminiProvider({ apiKey: config.GEMINI_API_KEY as string, model: config.GEMINI_MODEL, timeoutMs: config.GEMINI_TIMEOUT_MS, maxRetries: config.GEMINI_MAX_RETRIES });
+    return new GeminiProvider({
+      apiKey: config.GEMINI_API_KEY as string,
+      model: config.GEMINI_MODEL,
+      timeoutMs: config.GEMINI_TIMEOUT_MS,
+      maxRetries: config.GEMINI_MAX_RETRIES,
+      thinkingLevel: config.GEMINI_THINKING_LEVEL === "off" ? undefined : config.GEMINI_THINKING_LEVEL,
+    });
   }
   if (config.aiProvider === "fake") return new FakeAiProvider();
   return null;

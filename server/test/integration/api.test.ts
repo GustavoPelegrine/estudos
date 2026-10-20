@@ -239,6 +239,20 @@ describe("questões e simulados", () => {
     expect(fetched.body.quiz.questions[0].correctIndex).toBeUndefined();
   });
 
+  it("10 questões são geradas em lotes paralelos e contam como uma única operação de IA", async () => {
+    const usageBefore = (await alice.get("/me")).body.usage.aiCalls;
+    const before = server.provider.requests.length;
+    const r = await alice.post("/quizzes", { mode: "practice", materialIds: [materialId], count: 10, difficulty: "media" });
+    expect(r.status).toBe(200);
+    const sent = server.provider.requests.slice(before);
+    expect(sent.length).toBeGreaterThan(1);
+    expect(sent.reduce((n, q) => n + (q.context.count ?? 0), 0)).toBe(10);
+    const stems = r.body.quiz.questions.map((q: { stem: string }) => q.stem);
+    expect(new Set(stems).size).toBe(stems.length);
+    expect(stems.length).toBeLessThanOrEqual(10);
+    expect((await alice.get("/me")).body.usage.aiCalls).toBe(usageBefore + 1);
+  });
+
   it("registra a resposta uma única vez mesmo com cliques repetidos simultâneos", async () => {
     const before = (await alice.get("/stats")).body.stats.answered as number;
     const quiz = (await alice.post("/quizzes", { mode: "practice", materialIds: [materialId], count: 2, difficulty: "media" })).body.quiz;

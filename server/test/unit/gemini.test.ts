@@ -63,4 +63,24 @@ describe("cliente Gemini", () => {
     });
     await expect(provider(fetchImpl as unknown as typeof fetch, { maxRetries: 0 }).generate(req)).rejects.toMatchObject({ kind: "unavailable" });
   });
+
+  it("envia o nível de raciocínio e, se o modelo recusar, segue sem ele", async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ error: { status: "INVALID_ARGUMENT" } }), { status: 400 })).mockImplementation(async () => ok("{}"));
+    const p = provider(fetchImpl as unknown as typeof fetch, { thinkingLevel: "low" });
+    await expect(p.generate(req)).resolves.toMatchObject({ text: "{}" });
+    const first = JSON.parse((fetchImpl.mock.calls[0]![1] as RequestInit).body as string);
+    const second = JSON.parse((fetchImpl.mock.calls[1]![1] as RequestInit).body as string);
+    expect(first.generationConfig.thinkingConfig).toEqual({ thinkingLevel: "low" });
+    expect(second.generationConfig.thinkingConfig).toBeUndefined();
+    await p.generate(req); // chamadas seguintes já não enviam
+    const third = JSON.parse((fetchImpl.mock.calls[2]![1] as RequestInit).body as string);
+    expect(third.generationConfig.thinkingConfig).toBeUndefined();
+  });
+
+  it("sem nível configurado, não envia thinkingConfig; 400 sem thinking não é repetido", async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ error: { status: "INVALID_ARGUMENT" } }), { status: 400 }));
+    await expect(provider(fetchImpl as unknown as typeof fetch).generate(req)).rejects.toMatchObject({ kind: "config" });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(JSON.parse((fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1].body as string).generationConfig.thinkingConfig).toBeUndefined();
+  });
 });

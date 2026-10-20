@@ -8,6 +8,8 @@ export interface GeminiOptions {
   model: string;
   timeoutMs: number;
   maxRetries: number;
+  /** generationConfig.thinkingConfig.thinkingLevel; omitido quando indefinido. */
+  thinkingLevel?: string;
   fetchImpl?: typeof fetch;
   /** Espera entre tentativas (substituível nos testes). */
   sleep?: (ms: number) => Promise<void>;
@@ -36,6 +38,8 @@ export class GeminiProvider implements AiProvider {
   readonly model: string;
   private readonly fetchImpl: typeof fetch;
   private readonly sleep: (ms: number) => Promise<void>;
+  /** Vira true se a API recusar o thinkingConfig (ex.: modelo trocado): o app segue sem ele. */
+  private thinkingRejected = false;
 
   constructor(private readonly options: GeminiOptions) {
     this.model = options.model;
@@ -65,6 +69,7 @@ export class GeminiProvider implements AiProvider {
     const onAbort = () => controller.abort();
     outerSignal?.addEventListener("abort", onAbort, { once: true });
     const started = Date.now();
+    const sendThinking = Boolean(this.options.thinkingLevel) && !this.thinkingRejected;
     let res: Response;
     try {
       res = await this.fetchImpl(`${API_BASE}/models/${encodeURIComponent(this.model)}:generateContent`, {
@@ -78,6 +83,7 @@ export class GeminiProvider implements AiProvider {
             maxOutputTokens: req.maxOutputTokens,
             responseMimeType: "application/json",
             responseSchema: req.responseSchema,
+            ...(sendThinking ? { thinkingConfig: { thinkingLevel: this.options.thinkingLevel } } : {}),
           },
         }),
         signal: controller.signal,
@@ -91,6 +97,12 @@ export class GeminiProvider implements AiProvider {
     }
 
     const body = (await res.json().catch(() => ({}))) as GeminiBody;
+    if (!res.ok && res.status === 400 && sendThinking) {
+      // O modelo não aceitou o nível de raciocínio: desliga o parâmetro e tenta de novo (retry imediato).
+      this.thinkingRejected = true;
+      log.warn("gemini_thinking_rejected", { level: this.options.thinkingLevel });
+      throw new AiError("unavailable", "Ajustando a configuração da IA.", true);
+    }
     if (!res.ok) {
       // Registra apenas status e código — nunca o corpo da requisição.
       log.warn("gemini_http_error", { status: res.status, apiStatus: body.error?.status, task: req.task });

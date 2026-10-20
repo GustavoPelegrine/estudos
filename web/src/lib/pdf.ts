@@ -1,4 +1,5 @@
 import { extractPdf as extractWith, type ExtractResult, type PdfJsLike } from "@estudos/shared/pdf";
+import { importFresh } from "./stale-build";
 
 /**
  * Extração do texto do PDF NO NAVEGADOR (versão custo zero: o arquivo não é enviado para a nuvem).
@@ -11,10 +12,13 @@ async function loadPdfJs(): Promise<PdfJsLike> {
   pdfjsPromise ??= (async () => {
     // Build "legacy": inclui compatibilidade com navegadores menos recentes (Safari/iOS, Chrome desatualizado).
     // O build padrão do pdfjs-dist 6 usa APIs de JavaScript muito novas e falha nesses navegadores.
-    const [pdfjs, worker] = await Promise.all([import("pdfjs-dist/legacy/build/pdf.mjs"), import("pdfjs-dist/legacy/build/pdf.worker.min.mjs?url")]);
+    const [pdfjs, worker] = await importFresh(() => Promise.all([import("pdfjs-dist/legacy/build/pdf.mjs"), import("pdfjs-dist/legacy/build/pdf.worker.min.mjs?url")]));
     pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
     return pdfjs as unknown as PdfJsLike;
-  })();
+  })().catch((err: unknown) => {
+    pdfjsPromise = null; // permite tentar de novo
+    throw err;
+  });
   return pdfjsPromise;
 }
 

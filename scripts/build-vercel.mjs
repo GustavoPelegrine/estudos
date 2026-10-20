@@ -101,6 +101,8 @@ const config = {
     // __path preserva o caminho original caso a plataforma entregue a URL reescrita à função.
     { src: "/api/(.*)", dest: "/api?__path=$1" },
     { handle: "filesystem" },
+    // Arquivo de /assets inexistente (ex.: de uma publicação anterior) responde 404, e não a página do app.
+    { src: "/assets/.*", status: 404, headers: { "Cache-Control": "no-store" } },
     { src: "/(.*)", dest: "/index.html", headers: { "Cache-Control": "no-cache" } },
   ],
 };
