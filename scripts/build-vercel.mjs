@@ -6,8 +6,8 @@
  *   config.json          → rotas (/api/* → função; demais → SPA) e cabeçalhos de segurança
  * Na Vercel: Build Command = "npm run build:vercel" (ver vercel.json).
  */
-import { execSync } from "node:child_process";
-import { cpSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync, execSync } from "node:child_process";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
@@ -46,6 +46,21 @@ for (const file of fileList) {
   mkdirSync(dirname(dest), { recursive: true });
   cpSync(join(root, file), dest, { dereference: true });
 }
+// O runtime Node da Vercel não permite require() de pacotes que só existem como ES Module
+// (diferente do Node 22.12+ local). O firebase-admin → jwks-rsa faz require("jose"), que é ESM-only.
+// Geramos, só dentro da função, uma versão CommonJS desses pacotes e apontamos o "require" para ela.
+const ESM_ONLY_REQUIRED_FROM_CJS = ["jose"];
+for (const pkg of ESM_ONLY_REQUIRED_FROM_CJS) {
+  const pkgDir = join(funcDir, "node_modules", pkg);
+  if (!existsSync(pkgDir)) continue;
+  const manifestPath = join(pkgDir, "package.json");
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  const entry = manifest.exports?.["."]?.default ?? manifest.main;
+  await build({ entryPoints: [join(pkgDir, entry)], bundle: true, platform: "node", target: "node22", format: "cjs", outfile: join(pkgDir, "dist/vercel-cjs.cjs"), logLevel: "warning" });
+  manifest.exports["."] = { types: manifest.exports["."].types, require: "./dist/vercel-cjs.cjs", default: manifest.exports["."].default };
+  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+}
+
 writeFileSync(
   join(funcDir, ".vc-config.json"),
   JSON.stringify({ runtime: "nodejs22.x", handler: entryRel, launcherType: "Nodejs", shouldAddHelpers: false, maxDuration: 60 }, null, 2),
@@ -90,4 +105,17 @@ const config = {
   ],
 };
 writeFileSync(join(out, "config.json"), JSON.stringify(config, null, 2));
+// 4) Autoverificação: carrega a função isolada, com as mesmas restrições do runtime da Vercel
+//    (sem require() de ES Modules). Se falhar aqui, o deploy é interrompido em vez de publicar uma API quebrada.
+console.log("› verificando se a função carrega como na Vercel");
+try {
+  execFileSync(process.execPath, ["--no-experimental-require-module", "--input-type=module", "-e", `const m = await import(${JSON.stringify("./" + entryRel)}); if (typeof m.default !== "function") throw new Error("handler ausente");`], {
+    cwd: funcDir,
+    stdio: "inherit",
+    env: { PATH: process.env.PATH, NODE_ENV: "production" },
+  });
+} catch {
+  console.error("✗ A função não carregou no modo do runtime da Vercel. Veja o erro acima.");
+  process.exit(1);
+}
 console.log(`✓ .vercel/output pronto (${fileList.size} arquivos na função)`);

@@ -3,7 +3,8 @@
  * Simula localmente a Vercel servindo .vercel/output (após "npm run build:vercel"):
  * arquivos estáticos com os cabeçalhos de config.json, /api/* → função empacotada,
  * demais rotas → index.html. Serve para validar o pacote antes de publicar.
- * Uso: PORT=3000 node scripts/serve-vercel-output.mjs   (variáveis do backend no ambiente)
+ * Uso: PORT=3000 node --no-experimental-require-module scripts/serve-vercel-output.mjs
+ *      (a flag reproduz a restrição do runtime da Vercel; variáveis do backend no ambiente)
  */
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import { createServer } from "node:http";

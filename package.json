@@ -24,7 +24,7 @@
     "test": "npm run test:unit && npm run test:emulator",
     "e2e": "node scripts/e2e.mjs",
     "build:vercel": "node scripts/build-vercel.mjs",
-    "preview:vercel": "node scripts/serve-vercel-output.mjs"
+    "preview:vercel": "node --no-experimental-require-module scripts/serve-vercel-output.mjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0",
