@@ -3,26 +3,43 @@ html { scroll-behavior: smooth; }
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(ellipse at 80% 0%, var(--bg-glow) 0, transparent 35%), var(--bg);
+  background-color: var(--bg);
+  /* Brilhos de cor + grade técnica sutil (inspirada nos painéis DataV), que some nas bordas */
+  background-image:
+    radial-gradient(60rem 40rem at 85% -10%, var(--bg-glow), transparent 60%),
+    radial-gradient(45rem 35rem at -10% 110%, var(--bg-glow-2), transparent 60%),
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: auto, auto, 56px 56px, 56px 56px;
   background-attachment: fixed;
   color: var(--text);
-  font: 15px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font: 15px/1.6 var(--font-sans);
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
+::selection { background: rgba(200, 242, 107, 0.35); color: var(--text); }
 button, input, select, textarea { font: inherit; }
-button { cursor: pointer; transition: transform 0.15s, border-color 0.15s, background 0.15s; }
+button { cursor: pointer; transition: transform 0.18s ease, border-color 0.18s, background 0.18s, box-shadow 0.18s, color 0.18s; }
 button:hover:not(:disabled) { transform: translateY(-1px); }
-button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible, [tabindex]:focus-visible {
-  outline: 2px solid var(--cyan);
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible, [tabindex]:focus-visible, label:focus-within {
+  outline: 2px solid var(--lime);
   outline-offset: 2px;
 }
 button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-a { color: var(--blue); }
+a { color: var(--lime); text-underline-offset: 3px; }
+h1, h2, h3 { letter-spacing: -0.02em; }
+/* Palavra de destaque em itálico serifado (referência Verdant) */
+.serif, h1 em, h2 em { font-family: var(--font-serif); font-style: italic; font-weight: 400; letter-spacing: -0.01em; color: var(--lime); }
 .muted { color: var(--muted); }
-.small { font-size: 12px; }
+.small { font-size: 12.5px; }
+.mono { font-family: var(--font-mono); }
 .hidden { display: none !important; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .skip-link { position: absolute; left: -999px; top: 8px; z-index: 50; background: var(--toast-bg); color: var(--toast-text); padding: 8px 12px; border-radius: 8px; }
 .skip-link:focus { left: 8px; }
+.icon { width: 18px; height: 18px; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.kbd { font-family: var(--font-mono); font-size: 11px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; color: var(--muted); background: var(--surface); }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }

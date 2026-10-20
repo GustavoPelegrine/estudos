@@ -1,8 +1,11 @@
 import { Link } from "react-router-dom";
+import { Icon } from "../components/Icons";
+import { StatCard, Delta } from "../components/StatCard";
 import { ErrorState, Loading, Empty } from "../components/States";
 import { useApi } from "../hooks/useApi";
 import { api } from "../lib/api";
 import { percent } from "../lib/format";
+import { accuracyTrend, trendDelta } from "../lib/trend";
 
 export function DashboardPage() {
   const { data, error, loading, reload } = useApi(async () => {
@@ -14,19 +17,22 @@ export function DashboardPage() {
   if (error || !data) return <ErrorState message={error ?? "Erro ao carregar."} onRetry={() => void reload()} />;
   const { subjects, materials, stats } = data;
   const accuracy = stats.answered ? Math.round((stats.correct / stats.answered) * 100) : 0;
+  const trend = accuracyTrend(stats.recentQuizzes);
+  const studied = materials.filter((m) => m.studied).length;
 
   return (
     <section>
       <div className="grid stats">
-        <div className="panel stat"><div className="stat-icon" aria-hidden="true">▤</div><div><div className="num">{subjects.length}</div><div className="label">Matérias cadastradas</div></div></div>
-        <div className="panel stat"><div className="stat-icon" aria-hidden="true">◉</div><div><div className="num">{materials.length}</div><div className="label">Materiais adicionados</div></div></div>
-        <div className="panel stat"><div className="stat-icon" aria-hidden="true">✓</div><div><div className="num">{stats.answered}</div><div className="label">Questões respondidas</div></div></div>
-        <div className="panel stat"><div className="stat-icon" aria-hidden="true">↗</div><div><div className="num">{percent(stats.correct, stats.answered)}</div><div className="label">Taxa de acerto</div></div></div>
+        <StatCard icon="book" label="Matérias cadastradas" value={subjects.length} />
+        <StatCard icon="files" label="Materiais adicionados" value={materials.length} extra={materials.length ? <span className="delta flat">{studied} estudado(s)</span> : null} />
+        <StatCard icon="check" label="Questões respondidas" value={stats.answered} />
+        <StatCard icon="chart" label="Taxa de acerto" value={percent(stats.correct, stats.answered)} extra={<Delta value={trendDelta(trend)} />} trend={trend} trendMax={100} />
       </div>
       <div className="grid dash-grid">
-        <div className="panel">
+        <div className="panel hud">
           <div className="panel-head">
             <div>
+              <div className="kicker">Estudo</div>
               <h2>Suas matérias</h2>
               <div className="muted small">Organize seus estudos por semestre</div>
             </div>
@@ -38,15 +44,15 @@ export function DashboardPage() {
             <div className="subject-list">
               {subjects.slice(0, 8).map((s) => {
                 const mats = materials.filter((m) => m.subjectId === s.id);
-                const studied = mats.filter((m) => m.studied).length;
-                const pct = mats.length ? Math.round((studied / mats.length) * 100) : 0;
+                const done = mats.filter((m) => m.studied).length;
+                const pct = mats.length ? Math.round((done / mats.length) * 100) : 0;
                 return (
                   <div className="subject" key={s.id}>
                     <div className="dot" />
                     <div className="subject-info">
                       <strong>{s.name}</strong>
                       <small>
-                        {s.semester}º semestre · {mats.length} material(is) · {studied} estudado(s)
+                        {s.semester}º semestre · {mats.length} material(is) · {done} estudado(s)
                       </small>
                       <div className="progress" aria-label={`${pct}% estudado`}><span style={{ width: `${pct}%` }} /></div>
                     </div>
@@ -60,15 +66,16 @@ export function DashboardPage() {
         <div className="panel">
           <div className="panel-head">
             <div>
+              <div className="kicker">Atalhos</div>
               <h2>Continuar estudando</h2>
               <div className="muted small">Acesse rapidamente suas ferramentas</div>
             </div>
           </div>
           <div className="quick">
-            <Link to="/conteudo"><span className="qico" aria-hidden="true">▣</span><b>Conteúdo</b><span>Consulte seus materiais</span></Link>
-            <Link to="/flashcards"><span className="qico" aria-hidden="true">▧</span><b>Flashcards</b><span>{stats.flashcardsDue ? `${stats.flashcardsDue} para revisar` : "Revise conceitos"}</span></Link>
-            <Link to="/questoes"><span className="qico" aria-hidden="true">☷</span><b>Questões</b><span>Pratique com o material</span></Link>
-            <Link to="/tutor"><span className="qico" aria-hidden="true">✧</span><b>Dúvidas</b><span>Pergunte ao tutor</span></Link>
+            <Link to="/conteudo"><span className="glow-icon" aria-hidden="true"><Icon name="book" /></span><b>Conteúdo</b><span>Consulte seus materiais</span></Link>
+            <Link to="/flashcards"><span className="glow-icon" aria-hidden="true"><Icon name="cards" /></span><b>Flashcards</b><span>{stats.flashcardsDue ? `${stats.flashcardsDue} para revisar` : "Revise conceitos"}</span></Link>
+            <Link to="/questoes"><span className="glow-icon" aria-hidden="true"><Icon name="list" /></span><b>Questões</b><span>Pratique com o material</span></Link>
+            <Link to="/tutor"><span className="glow-icon" aria-hidden="true"><Icon name="sparkle" /></span><b>Dúvidas</b><span>Pergunte ao tutor</span></Link>
           </div>
           <h3>Progresso geral</h3>
           <div className="progress"><span style={{ width: `${accuracy}%` }} /></div>
@@ -83,7 +90,7 @@ export function DashboardPage() {
                   <li key={s} style={{ marginBottom: 6 }}>{s}</li>
                 ))}
               </ul>
-              <Link className="small" to="/desempenho">Ver desempenho completo</Link>
+              <Link className="small row" style={{ gap: 4, marginTop: 8 }} to="/desempenho">Ver desempenho completo <Icon name="arrowUpRight" size={14} /></Link>
             </>
           )}
         </div>

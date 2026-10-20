@@ -56,7 +56,7 @@ try {
   await step("redireciona para login quando não autenticada", async () => {
     await page.goto(BASE + "/");
     await page.waitForURL("**/entrar");
-    await page.getByRole("heading", { name: "Entrar" }).waitFor();
+    await page.getByRole("heading", { name: "Bem-vindo de volta" }).waitFor();
     await shot(page, "01-login");
   });
 
@@ -205,7 +205,7 @@ try {
   });
 
   await step("painel com indicadores", async () => {
-    await page.getByRole("link", { name: /Visão geral/ }).click();
+    await page.getByRole("navigation", { name: "Seções" }).getByRole("link", { name: /Visão geral/ }).first().click();
     await page.getByText("Matérias cadastradas").waitFor();
     await shot(page, "12-painel");
   });
@@ -237,7 +237,7 @@ try {
     await shot(page, "18-nova-versao");
     await page.getByRole("link", { name: "← Meu material" }).click();
     await page.locator(".pill", { hasText: "versão 2" }).waitFor();
-    await page.getByRole("link", { name: /Visão geral/ }).click();
+    await page.getByRole("navigation", { name: "Seções" }).getByRole("link", { name: /Visão geral/ }).first().click();
   });
 
   await step("sessão persiste após recarregar", async () => {

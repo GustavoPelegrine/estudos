@@ -4,21 +4,28 @@ import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { authErrorMessage } from "../lib/auth-errors";
 import { auth } from "../lib/firebase";
+import { Icon } from "../components/Icons";
+import { AccentTitle } from "../components/Layout";
 
-function AuthShell({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
+function AuthShell({ title, accent, subtitle, children }: { title: string; accent?: string; subtitle: string; children: ReactNode }) {
   return (
     <div className="auth-wrap">
       <main className="panel auth-card">
         <div className="brand">
-          <div className="brand-icon" aria-hidden="true">✦</div>
+          <div className="brand-icon" aria-hidden="true"><Icon name="tooth" size={20} /></div>
           <div>
             <strong>Estudos Odonto</strong>
             <small>Seu espaço de aprendizagem</small>
           </div>
         </div>
-        <div className="eyebrow">{subtitle}</div>
-        <h1 style={{ margin: "4px 0 18px", fontSize: 24, letterSpacing: -0.5 }}>{title}</h1>
+        <div className="eyebrow"><span className="live-dot" aria-hidden="true" />{subtitle}</div>
+        <h1 style={{ margin: "8px 0 20px" }}><AccentTitle title={title} accent={accent} /></h1>
         {children}
+        <div className="auth-aside">
+          <span><Icon name="check" size={14} /> Materiais privados</span>
+          <span><Icon name="sparkle" size={14} /> Tutor com citações</span>
+          <span><Icon name="cards" size={14} /> Revisão espaçada</span>
+        </div>
       </main>
     </div>
   );
@@ -51,7 +58,7 @@ export function LoginPage() {
   };
 
   return (
-    <AuthShell title="Entrar" subtitle="ACESSO À SUA CONTA">
+    <AuthShell title="Bem-vindo de volta" accent="volta" subtitle="Acesso à sua conta">
       <form className="stack" onSubmit={submit} noValidate>
         {error && <div className="notice bad" role="alert">{error}</div>}
         <div className="field">
@@ -101,7 +108,7 @@ export function SignupPage() {
   };
 
   return (
-    <AuthShell title="Criar conta" subtitle="CADASTRO">
+    <AuthShell title="Criar sua conta" accent="conta" subtitle="Cadastro">
       <form className="stack" onSubmit={submit} noValidate>
         {error && <div className="notice bad" role="alert">{error}</div>}
         <div className="field">
@@ -152,7 +159,7 @@ export function ForgotPasswordPage() {
   };
 
   return (
-    <AuthShell title="Recuperar senha" subtitle="ACESSO À SUA CONTA">
+    <AuthShell title="Recuperar senha" accent="senha" subtitle="Acesso à sua conta">
       {sent ? (
         <div className="stack">
           <div className="notice good" role="status">Se houver uma conta com este e-mail, você receberá um link para redefinir a senha.</div>

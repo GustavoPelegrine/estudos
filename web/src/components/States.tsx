@@ -2,8 +2,11 @@ import type { ReactNode } from "react";
 
 export function Loading({ label = "Carregando…" }: { label?: string }) {
   return (
-    <div className="loading" role="status">
-      <span className="spinner" aria-hidden="true" /> {label}
+    <div className="skeleton" role="status">
+      <span className="sr-only">{label}</span>
+      <div className="skeleton-line lg" aria-hidden="true" />
+      <div className="skeleton-line" aria-hidden="true" />
+      <div className="skeleton-line" style={{ width: "72%" }} aria-hidden="true" />
     </div>
   );
 }

@@ -1,21 +1,42 @@
 import { Link } from "react-router-dom";
+import { Sparkline } from "../components/Sparkline";
+import { Delta, StatCard } from "../components/StatCard";
 import { Empty, ErrorState, Loading } from "../components/States";
 import { useApi } from "../hooks/useApi";
 import { api } from "../lib/api";
 import { formatDateTime, percent } from "../lib/format";
+import { accuracyTrend, trendDelta } from "../lib/trend";
 
 export function PerformancePage() {
   const { data, error, loading, reload } = useApi(() => api.stats().then((r) => r.stats));
   if (loading && !data) return <Loading />;
   if (error || !data) return <ErrorState message={error ?? "Erro"} onRetry={() => void reload()} />;
+  const trend = accuracyTrend(data.recentQuizzes);
 
   return (
     <section className="stack">
       <div className="grid stats">
-        <div className="panel stat"><div className="stat-icon" aria-hidden="true">✓</div><div><div className="num">{data.answered}</div><div className="label">Questões respondidas</div></div></div>
-        <div className="panel stat"><div className="stat-icon" aria-hidden="true">↗</div><div><div className="num">{percent(data.correct, data.answered)}</div><div className="label">Taxa de acerto</div></div></div>
-        <div className="panel stat"><div className="stat-icon" aria-hidden="true">◷</div><div><div className="num">{data.quizzesFinished}</div><div className="label">Simulados finalizados</div></div></div>
-        <div className="panel stat"><div className="stat-icon" aria-hidden="true">▧</div><div><div className="num">{data.flashcardsDue}</div><div className="label">Flashcards para revisar</div></div></div>
+        <StatCard icon="check" label="Questões respondidas" value={data.answered} />
+        <StatCard icon="chart" label="Taxa de acerto" value={percent(data.correct, data.answered)} extra={<Delta value={trendDelta(trend)} />} />
+        <StatCard icon="timer" label="Simulados finalizados" value={data.quizzesFinished} />
+        <StatCard icon="cards" label="Flashcards para revisar" value={data.flashcardsDue} />
+      </div>
+      <div className="panel hud stack">
+        <div className="panel-head">
+          <div>
+            <div className="kicker">Evolução</div>
+            <h2>Aproveitamento por tentativa</h2>
+            <div className="muted small">Percentual de acertos das últimas tentativas finalizadas</div>
+          </div>
+          {trend.length > 0 && <span className="delta flat">Última: {trend[trend.length - 1]}%</span>}
+        </div>
+        {trend.length < 2 ? (
+          <p className="muted small">Finalize ao menos duas tentativas para ver a evolução.</p>
+        ) : (
+          <div className="chart-wrap">
+            <Sparkline values={trend} max={100} height={150} width={600} label={`Aproveitamento nas últimas ${trend.length} tentativas: ${trend.join("%, ")}%`} />
+          </div>
+        )}
       </div>
       <div className="grid two-col">
         <div className="panel stack">
