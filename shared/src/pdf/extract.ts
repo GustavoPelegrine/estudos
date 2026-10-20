@@ -30,6 +30,8 @@ export class PdfExtractionError extends Error {
     options?: { cause?: unknown },
   ) {
     super(message, options);
+    // Navegadores antigos (ex.: Safari < 15) ignoram a opção "cause" do construtor de Error.
+    if (options && this.cause === undefined) this.cause = options.cause;
   }
 }
 
