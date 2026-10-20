@@ -10,6 +10,11 @@ export interface GeminiOptions {
   maxRetries: number;
   /** generationConfig.thinkingConfig.thinkingLevel; omitido quando indefinido. */
   thinkingLevel?: string;
+  /** Modelo reserva usado quando o principal está sobrecarregado (503) ou no limite (429). */
+  fallbackModel?: string;
+  /** Por quanto tempo, após uma sobrecarga, as chamadas vão direto ao reserva. */
+  fallbackCooldownMs?: number;
+  now?: () => number;
   fetchImpl?: typeof fetch;
   /** Espera entre tentativas (substituível nos testes). */
   sleep?: (ms: number) => Promise<void>;
@@ -32,47 +37,85 @@ interface GeminiBody {
  * - A chave vai no cabeçalho x-goog-api-key (nunca na URL, para não aparecer em logs).
  * - Timeout por tentativa com AbortController.
  * - Novas tentativas com backoff exponencial apenas para 429/5xx/timeout.
+ * - Modelo reserva: se o principal responder 503/429, a próxima tentativa usa o reserva
+ *   imediatamente, e as chamadas seguintes vão direto a ele durante um intervalo.
  */
 export class GeminiProvider implements AiProvider {
   readonly name = "gemini" as const;
   readonly model: string;
   private readonly fetchImpl: typeof fetch;
   private readonly sleep: (ms: number) => Promise<void>;
-  /** Vira true se a API recusar o thinkingConfig (ex.: modelo trocado): o app segue sem ele. */
-  private thinkingRejected = false;
+  private readonly now: () => number;
+  /** Modelos que recusaram o thinkingConfig: o app segue sem ele nesses modelos. */
+  private readonly thinkingRejected = new Set<string>();
+  /** Até quando as chamadas vão direto ao modelo reserva (após sobrecarga do principal). */
+  private primaryCooldownUntil = 0;
+  /** O reserva não existe/não é aceito para esta chave: deixa de ser usado. */
+  private fallbackBroken = false;
 
   constructor(private readonly options: GeminiOptions) {
     this.model = options.model;
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.sleep = options.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+    this.now = options.now ?? Date.now;
+  }
+
+  private get fallbackAvailable(): boolean {
+    const fb = this.options.fallbackModel;
+    return Boolean(fb) && fb !== this.model && !this.fallbackBroken;
   }
 
   async generate(req: AiRequest, signal?: AbortSignal): Promise<AiResponse> {
     let lastError: AiError | null = null;
+    let primaryError: AiError | null = null;
+    let useFallback = this.fallbackAvailable && this.now() < this.primaryCooldownUntil;
+    let skipBackoff = false;
     for (let attempt = 0; attempt <= this.options.maxRetries; attempt++) {
-      if (attempt > 0) await this.sleep(Math.min(8000, 1000 * 2 ** (attempt - 1)) + Math.floor(Math.random() * 250));
+      if (attempt > 0 && !skipBackoff) await this.sleep(Math.min(8000, 1000 * 2 ** (attempt - 1)) + Math.floor(Math.random() * 250));
+      skipBackoff = false;
       if (signal?.aborted) break;
+      const model = useFallback && this.fallbackAvailable ? (this.options.fallbackModel as string) : this.model;
       try {
-        return await this.once(req, signal);
+        return await this.once(req, model, signal);
       } catch (err) {
-        lastError = err instanceof AiError ? err : new AiError("unavailable", "Falha de comunicação com a IA.", true);
-        if (!lastError.retryable || signal?.aborted) break;
-        log.warn("gemini_retry", { attempt: attempt + 1, kind: lastError.kind });
+        const e = err instanceof AiError ? err : new AiError("unavailable", "Falha de comunicação com a IA.", true);
+        const overloaded = e.kind === "unavailable" || e.kind === "rate_limited";
+        if (model === this.model && overloaded && this.fallbackAvailable && !signal?.aborted) {
+          // Principal sobrecarregado: troca já para o reserva, sem esperar.
+          this.primaryCooldownUntil = this.now() + (this.options.fallbackCooldownMs ?? 60_000);
+          primaryError = e;
+          useFallback = true;
+          skipBackoff = true;
+          log.warn("gemini_fallback", { from: this.model, to: this.options.fallbackModel, kind: e.kind, task: req.task });
+          continue;
+        }
+        if (model !== this.model && e.kind === "config") {
+          // Reserva inexistente ou não liberado para esta chave: desativa e volta ao principal.
+          this.fallbackBroken = true;
+          log.warn("gemini_fallback_disabled", { model });
+          if (primaryError) throw primaryError;
+          useFallback = false;
+          skipBackoff = true;
+          continue;
+        }
+        lastError = e;
+        if (!e.retryable || signal?.aborted) break;
+        log.warn("gemini_retry", { attempt: attempt + 1, kind: e.kind, model });
       }
     }
-    throw lastError ?? new AiError("timeout", "A IA demorou demais para responder.");
+    throw lastError ?? primaryError ?? new AiError("timeout", "A IA demorou demais para responder.");
   }
 
-  private async once(req: AiRequest, outerSignal?: AbortSignal): Promise<AiResponse> {
+  private async once(req: AiRequest, model: string, outerSignal?: AbortSignal): Promise<AiResponse> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.options.timeoutMs);
     const onAbort = () => controller.abort();
     outerSignal?.addEventListener("abort", onAbort, { once: true });
     const started = Date.now();
-    const sendThinking = Boolean(this.options.thinkingLevel) && !this.thinkingRejected;
+    const sendThinking = Boolean(this.options.thinkingLevel) && !this.thinkingRejected.has(model);
     let res: Response;
     try {
-      res = await this.fetchImpl(`${API_BASE}/models/${encodeURIComponent(this.model)}:generateContent`, {
+      res = await this.fetchImpl(`${API_BASE}/models/${encodeURIComponent(model)}:generateContent`, {
         method: "POST",
         headers: { "content-type": "application/json", "x-goog-api-key": this.options.apiKey },
         body: JSON.stringify({
@@ -98,14 +141,14 @@ export class GeminiProvider implements AiProvider {
 
     const body = (await res.json().catch(() => ({}))) as GeminiBody;
     if (!res.ok && res.status === 400 && sendThinking) {
-      // O modelo não aceitou o nível de raciocínio: desliga o parâmetro e tenta de novo (retry imediato).
-      this.thinkingRejected = true;
-      log.warn("gemini_thinking_rejected", { level: this.options.thinkingLevel });
-      throw new AiError("unavailable", "Ajustando a configuração da IA.", true);
+      // O modelo não aceitou o nível de raciocínio: desliga o parâmetro para ele e repete na hora.
+      this.thinkingRejected.add(model);
+      log.warn("gemini_thinking_rejected", { level: this.options.thinkingLevel, model });
+      return this.once(req, model, outerSignal);
     }
     if (!res.ok) {
       // Registra apenas status e código — nunca o corpo da requisição.
-      log.warn("gemini_http_error", { status: res.status, apiStatus: body.error?.status, task: req.task });
+      log.warn("gemini_http_error", { status: res.status, apiStatus: body.error?.status, task: req.task, model });
       if (res.status === 429) throw new AiError("rate_limited", "Limite de uso da Gemini API atingido. Tente novamente em alguns minutos.", true);
       if (res.status >= 500) throw new AiError("unavailable", "A Gemini API está indisponível no momento.", true);
       if (res.status === 400 || res.status === 401 || res.status === 403 || res.status === 404) {
@@ -125,13 +168,14 @@ export class GeminiProvider implements AiProvider {
     if (candidate?.finishReason === "MAX_TOKENS") throw new AiError("invalid_response", "A resposta da IA foi interrompida por excesso de tamanho.", true);
     log.info("gemini_ok", {
       task: req.task,
+      model,
       ms: Date.now() - started,
       promptTokens: body.usageMetadata?.promptTokenCount,
       outputTokens: body.usageMetadata?.candidatesTokenCount,
     });
     return {
       text,
-      model: this.model,
+      model,
       usage: { promptTokens: body.usageMetadata?.promptTokenCount ?? 0, outputTokens: body.usageMetadata?.candidatesTokenCount ?? 0 },
     };
   }

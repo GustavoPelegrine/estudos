@@ -54,6 +54,7 @@ A Vercel baixa o código do GitHub, faz o build nos servidores dela e publica o 
    | `AI_PROVIDER` | `gemini` |
    | `GEMINI_API_KEY` | chave do passo 2 (marque como *Sensitive*) |
    | `GEMINI_MODEL` | `gemini-3.8-flash` |
+   | `GEMINI_FALLBACK_MODEL` | opcional — padrão `gemini-3.5-flash`, usado quando o principal estiver sobrecarregado (503/429); `off` desativa |
    | `ALLOWED_EMAILS` | e-mail(s) de quem pode usar o portal, separados por vírgula |
    | `AI_DAILY_LIMIT_PER_USER` | `40` (sugestão para o nível gratuito) |
    | `AI_DAILY_LIMIT_GLOBAL` | `100` |
@@ -86,7 +87,7 @@ A cada novo commit na branch `main`, a Vercel publica automaticamente uma nova v
 | "Esta conta ainda não tem acesso à plataforma" | O e-mail não está em `ALLOWED_EMAILS` (ou há espaço/maiúscula diferente). |
 | Login falha com erro de domínio | Passo 4 (domínio autorizado) não foi feito. |
 | "Erro interno" ao abrir o painel | `FIREBASE_SERVICE_ACCOUNT` incompleta ou de outro projeto; veja *Vercel → Logs*. |
-| "A IA demorou demais para responder" | Rede lenta ou modelo sobrecarregado. Tente com menos questões; se persistir, confira `GEMINI_THINKING_LEVEL` (padrão `low`, o mais rápido). |
+| "A IA demorou demais para responder" | Modelo sobrecarregado (log `gemini_http_error` com 503). O app já troca para `GEMINI_FALLBACK_MODEL`; se o log mostrar `gemini_fallback_disabled`, o modelo reserva não está liberado para a sua chave — escolha outro que apareça no AI Studio. |
 | "O site foi atualizado. Recarregue a página" | A aba estava aberta durante uma nova publicação; aperte Ctrl+F5. |
 | "Limite de uso da Gemini API atingido" | Limite por minuto/dia do nível gratuito; aguarde alguns minutos ou até o dia seguinte. |
 | Site em branco | Variáveis `VITE_*` ausentes no momento do build; cadastre e faça *Redeploy*. |

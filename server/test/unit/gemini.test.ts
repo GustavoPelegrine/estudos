@@ -83,4 +83,56 @@ describe("cliente Gemini", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     expect(JSON.parse((fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1].body as string).generationConfig.thinkingConfig).toBeUndefined();
   });
+
+  describe("modelo reserva", () => {
+    const urlOf = (call: unknown) => (call as [string])[0];
+    const status = (code: number, apiStatus: string) => new Response(JSON.stringify({ error: { status: apiStatus } }), { status: code });
+
+    it("com 503 no principal, usa o reserva na hora (sem esperar) e informa o modelo usado", async () => {
+      const sleep = vi.fn(async () => undefined);
+      const fetchImpl = vi.fn().mockResolvedValueOnce(status(503, "UNAVAILABLE")).mockImplementation(async () => ok('{"a":1}'));
+      const res = await provider(fetchImpl as unknown as typeof fetch, { fallbackModel: "gemini-3.5-flash", sleep }).generate(req);
+      expect(urlOf(fetchImpl.mock.calls[0])).toContain("/models/gemini-3.8-flash:");
+      expect(urlOf(fetchImpl.mock.calls[1])).toContain("/models/gemini-3.5-flash:");
+      expect(sleep).not.toHaveBeenCalled();
+      expect(res.model).toBe("gemini-3.5-flash");
+    });
+
+    it("também troca no limite de uso (429)", async () => {
+      const fetchImpl = vi.fn().mockResolvedValueOnce(status(429, "RESOURCE_EXHAUSTED")).mockImplementation(async () => ok("{}"));
+      const res = await provider(fetchImpl as unknown as typeof fetch, { fallbackModel: "gemini-3.5-flash" }).generate(req);
+      expect(res.model).toBe("gemini-3.5-flash");
+    });
+
+    it("após uma sobrecarga, as chamadas seguintes vão direto ao reserva até o fim do intervalo", async () => {
+      let now = 1_000_000;
+      const fetchImpl = vi.fn().mockResolvedValueOnce(status(503, "UNAVAILABLE")).mockImplementation(async () => ok("{}"));
+      const p = provider(fetchImpl as unknown as typeof fetch, { fallbackModel: "gemini-3.5-flash", fallbackCooldownMs: 60_000, now: () => now });
+      await p.generate(req);
+      await p.generate(req);
+      expect(urlOf(fetchImpl.mock.calls[2])).toContain("/models/gemini-3.5-flash:");
+      now += 61_000;
+      await p.generate(req);
+      expect(urlOf(fetchImpl.mock.calls[3])).toContain("/models/gemini-3.8-flash:");
+    });
+
+    it("se o reserva não existir para a chave, devolve o erro original e deixa de usá-lo", async () => {
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValueOnce(status(503, "UNAVAILABLE"))
+        .mockResolvedValueOnce(status(404, "NOT_FOUND"))
+        .mockImplementation(async () => ok("{}"));
+      const p = provider(fetchImpl as unknown as typeof fetch, { fallbackModel: "modelo-inexistente" });
+      await expect(p.generate(req)).rejects.toMatchObject({ kind: "unavailable" });
+      const res = await p.generate(req);
+      expect(res.model).toBe("gemini-3.8-flash");
+      expect(urlOf(fetchImpl.mock.calls.at(-1))).toContain("/models/gemini-3.8-flash:");
+    });
+
+    it("erros de configuração do principal não acionam o reserva", async () => {
+      const fetchImpl = vi.fn(async () => status(403, "PERMISSION_DENIED"));
+      await expect(provider(fetchImpl as unknown as typeof fetch, { fallbackModel: "gemini-3.5-flash" }).generate(req)).rejects.toMatchObject({ kind: "config" });
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    });
+  });
 });

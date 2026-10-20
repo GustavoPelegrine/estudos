@@ -29,6 +29,8 @@ const schema = z.object({
    * Nível de raciocínio (thinking) da Gemini. "low" responde bem mais rápido e basta para as tarefas do portal.
    * Valores aceitos pela gemini-3.8-flash: low, medium, high ("minimal" não é aceito por esse modelo). "off" = não enviar.
    */
+  /** Modelo reserva para sobrecarga (503) ou limite (429) do principal. "off" desativa. */
+  GEMINI_FALLBACK_MODEL: z.string().default("gemini-3.5-flash"),
   GEMINI_THINKING_LEVEL: z.enum(["low", "medium", "high", "minimal", "off"]).default("low"),
   /** Tempo total máximo de uma operação de IA (todas as tentativas). Deve caber no limite da função (Vercel: 60 s). */
   AI_TIME_BUDGET_MS: z.coerce.number().int().positive().default(55_000),

@@ -11,6 +11,7 @@ export function createAiProvider(config: Config): AiProvider | null {
       timeoutMs: config.GEMINI_TIMEOUT_MS,
       maxRetries: config.GEMINI_MAX_RETRIES,
       thinkingLevel: config.GEMINI_THINKING_LEVEL === "off" ? undefined : config.GEMINI_THINKING_LEVEL,
+      fallbackModel: ["", "off"].includes(config.GEMINI_FALLBACK_MODEL.trim()) ? undefined : config.GEMINI_FALLBACK_MODEL.trim(),
     });
   }
   if (config.aiProvider === "fake") return new FakeAiProvider();
