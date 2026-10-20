@@ -69,7 +69,8 @@ writeFileSync(
 // 3) Rotas e cabeçalhos
 const csp = [
   "default-src 'self'",
-  "script-src 'self'",
+  // 'wasm-unsafe-eval' só permite compilar WebAssembly (decodificadores de imagem do PDF.js), não eval de JavaScript.
+  "script-src 'self' 'wasm-unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self'",

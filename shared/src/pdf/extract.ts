@@ -95,25 +95,39 @@ async function readDocument(pdfjs: PdfJsLike, docPromise: Promise<PdfDocLike>, o
 
   const rawPages: { lines: Line[]; columns: boolean; hasImages: boolean }[] = [];
   const fontSizes: number[] = [];
+  const failedPages: number[] = [];
+  let firstPageError: unknown;
   for (let p = 1; p <= doc.numPages; p++) {
     options.onProgress?.(p, doc.numPages);
-    const page = await doc.getPage(p);
-    const content = await page.getTextContent();
-    const items = content.items.filter((it): it is RawTextItem => typeof it === "object" && it !== null && "str" in it);
-    const layout = layoutPage(items);
-    for (const line of layout.lines) for (let i = 0; i < Math.min(line.text.length, 200); i += 10) fontSizes.push(line.fs);
-    let hasImages = false;
-    if (layout.lines.reduce((n, l) => n + l.text.length, 0) < MIN_PAGE_CHARS) {
-      const ops = await page.getOperatorList();
-      hasImages = ops.fnArray.some((fn) => imageOps.has(fn));
+    // Uma página problemática (fonte ou imagem que o navegador não decodifica) não derruba o documento inteiro:
+    // ela fica sem texto e é apontada no relatório para conferência.
+    try {
+      const page = await doc.getPage(p);
+      const content = await page.getTextContent();
+      const items = content.items.filter((it): it is RawTextItem => typeof it === "object" && it !== null && "str" in it);
+      const layout = layoutPage(items);
+      for (const line of layout.lines) for (let i = 0; i < Math.min(line.text.length, 200); i += 10) fontSizes.push(line.fs);
+      let hasImages = false;
+      if (layout.lines.reduce((n, l) => n + l.text.length, 0) < MIN_PAGE_CHARS) {
+        // Só serve para diferenciar página digitalizada de página vazia; se falhar, presume imagem.
+        hasImages = await page.getOperatorList().then(
+          (ops) => ops.fnArray.some((fn) => imageOps.has(fn)),
+          () => true,
+        );
+      }
+      rawPages.push({ lines: layout.lines, columns: layout.columns, hasImages });
+      page.cleanup();
+    } catch (err) {
+      firstPageError ??= err;
+      failedPages.push(p);
+      rawPages.push({ lines: [], columns: false, hasImages: false });
     }
-    rawPages.push({ lines: layout.lines, columns: layout.columns, hasImages });
-    page.cleanup();
   }
-  return buildResult(rawPages, mode(fontSizes) || 11, options.maxCharsPerPage);
+  if (failedPages.length === doc.numPages) throw firstPageError;
+  return buildResult(rawPages, mode(fontSizes) || 11, options.maxCharsPerPage, failedPages);
 }
 
-function buildResult(rawPages: { lines: Line[]; columns: boolean; hasImages: boolean }[], bodyFontSize: number, maxCharsPerPage: number): ExtractResult {
+function buildResult(rawPages: { lines: Line[]; columns: boolean; hasImages: boolean }[], bodyFontSize: number, maxCharsPerPage: number, failedPages: number[] = []): ExtractResult {
   const stripped = stripRunningHeaders(rawPages.map((p) => p.lines));
   const pages: MaterialPage[] = [];
   const multiColumnPages: number[] = [];
@@ -144,6 +158,7 @@ function buildResult(rawPages: { lines: Line[]; columns: boolean; hasImages: boo
   });
 
   const extraWarnings: string[] = [];
+  if (failedPages.length) extraWarnings.push(`Não foi possível ler as páginas ${formatPages(failedPages)} neste dispositivo. Confira-as ou tente em outro navegador.`);
   if (garbledPages.length) extraWarnings.push(`Texto possivelmente corrompido (codificação de fonte) nas páginas ${formatPages(garbledPages)}. Confira antes de usar.`);
   if (truncated) extraWarnings.push(`Algumas páginas excederam ${maxCharsPerPage.toLocaleString("pt-BR")} caracteres e foram truncadas.`);
   if (stripped.removed > 0) extraWarnings.push(`${stripped.removed} linha(s) de cabeçalho/rodapé ou numeração de página foram removidas.`);

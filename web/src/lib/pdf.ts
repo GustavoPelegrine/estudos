@@ -1,4 +1,4 @@
-import { extractPdf as extractWith, type ExtractResult, type PdfJsLike } from "@estudos/shared/pdf";
+import { extractPdf as extractWith, PdfExtractionError, type ExtractResult, type PdfJsLike } from "@estudos/shared/pdf";
 import { importFresh } from "./stale-build";
 
 /**
@@ -22,16 +22,29 @@ async function loadPdfJs(): Promise<PdfJsLike> {
   return pdfjsPromise;
 }
 
+// Recursos copiados para /pdfjs/ no build (web/vite.config.ts): fontes CID, fontes padrão e imagens JPEG 2000/JBIG2.
+const PDFJS_RESOURCES = { cMapUrl: "/pdfjs/cmaps/", cMapPacked: true, standardFontDataUrl: "/pdfjs/standard_fonts/", wasmUrl: "/pdfjs/wasm/", iccUrl: "/pdfjs/iccs/" };
+
 export async function extractPdfInBrowser(file: File, opts: { maxPages: number; onProgress?: (page: number, total: number) => void }): Promise<ExtractResult> {
   const pdfjs = await loadPdfJs();
   const bytes = new Uint8Array(await file.arrayBuffer());
   try {
-    return await extractWith(pdfjs, bytes, { maxPages: opts.maxPages, maxCharsPerPage: 100_000, timeoutMs: 180_000, onProgress: opts.onProgress });
+    return await extractWith(pdfjs, bytes, { maxPages: opts.maxPages, maxCharsPerPage: 100_000, timeoutMs: 180_000, onProgress: opts.onProgress, docParams: PDFJS_RESOURCES });
   } catch (err) {
     // Detalhe técnico só no console do navegador (ajuda no suporte); a interface mostra a mensagem amigável.
-    console.warn("Falha na leitura do PDF:", (err as Error).cause ?? err);
+    const cause = (err as Error).cause;
+    console.warn("Falha na leitura do PDF:", cause ?? err);
+    // No celular/tablet não há console: o detalhe técnico vai junto da mensagem para facilitar o suporte.
+    if (err instanceof PdfExtractionError && err.code === "invalid_pdf" && cause) {
+      throw new PdfExtractionError(`${err.message} Detalhe técnico: ${technicalDetail(cause)}`, err.code, { cause });
+    }
     throw err;
   }
+}
+
+function technicalDetail(cause: unknown): string {
+  const e = cause as { name?: string; message?: string };
+  return `${e?.name ?? "Erro"}: ${String(e?.message ?? cause).slice(0, 160)}`;
 }
 
 /**

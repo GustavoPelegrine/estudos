@@ -15,7 +15,7 @@ const out = resolve(".vercel/output");
 const config = JSON.parse(readFileSync(join(out, "config.json"), "utf8"));
 const vc = JSON.parse(readFileSync(join(out, "functions/api.func/.vc-config.json"), "utf8"));
 const { default: handler } = await import(pathToFileURL(join(out, "functions/api.func", vc.handler)).href);
-const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".json": "application/json", ".png": "image/png" };
+const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".json": "application/json", ".png": "image/png", ".wasm": "application/wasm" };
 
 createServer((req, res) => {
   const path = decodeURIComponent(new URL(req.url, "http://x").pathname);

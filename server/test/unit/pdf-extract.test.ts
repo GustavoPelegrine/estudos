@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { extractPdf, looksLikePdf, PdfExtractionError } from "../../src/pdf/extract.js";
-import { collapseLetterSpaced, joinLines, layoutPage, type RawTextItem } from "@estudos/shared/pdf";
+import { collapseLetterSpaced, extractPdf as sharedExtract, joinLines, layoutPage, type RawTextItem } from "@estudos/shared/pdf";
 import { makeMixedPdf, makeScannedPdf, makeTextPdf, makeTwoColumnPdf } from "../fixtures/pdfs.js";
 
 const opts = { maxPages: 50, maxCharsPerPage: 100_000, timeoutMs: 20_000 };
@@ -117,5 +117,36 @@ describe("heurísticas de layout", () => {
     const item = (str: string, y: number): RawTextItem => ({ str, transform: [10, 0, 0, 10, 50, y], width: 60 });
     const { lines } = layoutPage([item("terceira", 600), item("primeira", 700), item("segunda", 650)]);
     expect(lines.map((l) => l.text)).toEqual(["primeira", "segunda", "terceira"]);
+  });
+});
+
+describe("páginas que o leitor não consegue processar", () => {
+  const pdfBytes = new TextEncoder().encode("%PDF-1.7 teste");
+  const fakePdfJs = (failing: Set<number>, total: number) => ({
+    OPS: { paintImageXObject: 1, paintInlineImageXObject: 2, paintImageMaskXObject: 3 },
+    getDocument: () => ({
+      destroy: async () => undefined,
+      promise: Promise.resolve({
+        numPages: total,
+        getPage: async (n: number) => ({
+          getTextContent: async () => {
+            if (failing.has(n)) throw new Error("falha simulada na fonte");
+            return { items: [{ str: `Texto suficiente da página ${n} sobre o esmalte dentário.`, transform: [10, 0, 0, 10, 50, 700], width: 300 }] };
+          },
+          getOperatorList: async () => ({ fnArray: [] }),
+          cleanup: () => undefined,
+        }),
+      }),
+    }),
+  });
+
+  it("mantém as demais páginas e aponta a página com falha", async () => {
+    const { pages, report } = await sharedExtract(fakePdfJs(new Set([2]), 3), pdfBytes, opts);
+    expect(pages.map((p) => p.hasText)).toEqual([true, false, true]);
+    expect(report.warnings.join(" ")).toMatch(/Não foi possível ler as páginas 2/);
+  });
+
+  it("falha com mensagem clara quando nenhuma página pode ser lida", async () => {
+    await expect(sharedExtract(fakePdfJs(new Set([1, 2]), 2), pdfBytes, opts)).rejects.toMatchObject({ code: "invalid_pdf", cause: expect.objectContaining({ message: "falha simulada na fonte" }) });
   });
 });
